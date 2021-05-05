@@ -110,6 +110,7 @@
     "format": "prettier --write './**/*.{js,jsx,less,json}' --config ./.prettierrc && npm run eslint:fix",
     "test": "node scripts/test.js"
   },
+  "homepage": "/static-files/",
   "browserslist": {
     "production": [
       ">0.2%",
