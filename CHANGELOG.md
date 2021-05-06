@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Optimize explore panel chart interactions performance (roubkar)
 - Fix problem with drawing large range svg paths (roubkar)
 - Display horizontal hoverline and cursor position value on axes (roubkar)
 - Add ability to select zoom mode for better UX (roubkar)

@@ -565,3 +565,16 @@ export function formatSystemMetricName(metric) {
 
   return name;
 }
+
+export function findClosestIndex(arr, element) {
+  let minDiff = Infinity;
+  let result = 0;
+  for (let i = 0; i < arr.length; i++) {
+    let diff = Math.abs(element - arr[i]);
+    if (minDiff > diff) {
+      minDiff = diff;
+      result = i;
+    }
+  }
+  return result;
+}

@@ -191,14 +191,20 @@
     }
   }
 
-  .PlotLine {
-    stroke-width: 1 !important;
-    opacity: 1;
+  .Lines {
+    overflow: hidden;
 
-    &.inactive {
-      stroke-width: 1 !important;
-      opacity: 0.2;
+    &.highlight {
+      .PlotLine:not(.active):not(.current) {
+        stroke-width: 1;
+        opacity: 0.2;
+      }
     }
+  }
+
+  .PlotLine {
+    stroke-width: 1;
+    opacity: 1;
 
     &.active {
       stroke-width: 2 !important;
@@ -208,11 +214,6 @@
     &.current {
       stroke-width: 3 !important;
       opacity: 1;
-    }
-
-    &.fade {
-      stroke-width: 1 !important;
-      opacity: 0.3;
     }
   }
 
@@ -231,10 +232,6 @@
   .HoverLine {
     stroke: var(--grey-light);
     z-index: -1;
-  }
-
-  .Lines {
-    overflow: hidden;
   }
 }
 
