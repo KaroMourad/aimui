@@ -814,6 +814,7 @@ function PanelChart(props) {
     const xAlignment = chart.settings.persistent.xAlignment;
     const isXLogScale =
       scaleOptions[chart.settings.persistent.xScale] === 'log';
+    let xTicks = [];
 
     if (xAlignment === 'epoch' && traceList.epochSteps[props.index]) {
       xTicks = Object.keys(traceList.epochSteps[props.index]).map((epoch) => {
@@ -826,7 +827,10 @@ function PanelChart(props) {
 
     let xAxisTicks = d3.axisBottom(chartOptions.current.xScale);
 
-    if (xAlignment === 'epoch') {
+    if (xAlignment === 'step') {
+      const ticksCount = Math.floor(plotBox.current.width / 50);
+      xAxisTicks.ticks(ticksCount > 1 ? ticksCount - 1 : 1);
+    } else if (xAlignment === 'epoch') {
       const ticksCount = Math.floor(plotBox.current.width / 50);
       const delta = Math.floor(xTicks.length / ticksCount);
       const ticks =

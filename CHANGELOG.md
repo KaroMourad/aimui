@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix X axis tick labels overlap issue (roubkar)
 - Optimize explore panel chart interactions performance (roubkar)
 - Fix problem with drawing large range svg paths (roubkar)
 - Display horizontal hoverline and cursor position value on axes (roubkar)
