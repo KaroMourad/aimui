@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Display group config inside chart popover (roubkar)
 - Fix X axis tick labels overlap issue (roubkar)
 - Optimize explore panel chart interactions performance (roubkar)
 - Fix problem with drawing large range svg paths (roubkar)
