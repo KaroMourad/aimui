@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add confidence interval aggregation mode (roubkar)
 - Display group config inside chart popover (roubkar)
 - Fix X axis tick labels overlap issue (roubkar)
 - Optimize explore panel chart interactions performance (roubkar)

@@ -1081,6 +1081,10 @@ function PanelChart(props) {
           areaTraceMin = traceModel.aggregation.stdErrMin;
           areaTraceMax = traceModel.aggregation.stdErrMax;
           break;
+        case 'conf_int':
+          areaTraceMin = traceModel.aggregation.confIntMin;
+          areaTraceMax = traceModel.aggregation.confIntMax;
+          break;
       }
 
       switch (contextFilter.aggregatedLine) {
@@ -1474,10 +1478,10 @@ function PanelChart(props) {
         trace.data.map((d) => d.x),
         chartOptions.current.xScale(step),
       );
-      const closestPoint = trace.data[closestStepIndex];
-      x = closestPoint.x;
+      const closestPoint = trace.data[closestStepIndex] ?? trace.data[0];
+      x = closestPoint?.x;
       const closestStep = Math.round(chartOptions.current.xScale.invert(x));
-      let y = closestPoint.y;
+      let y = closestPoint?.y;
       let val = chartOptions.current.yScale.invert(y);
 
       let shouldHighlightCircle;
