@@ -1400,6 +1400,7 @@ function PanelChart(props) {
 
     if (!isXLogScale || step > 0) {
       // Draw vertical hover line
+      const [xMinValue, xMaxValue] = chartOptions.current.xScale.domain();
       const [xMin, xMax] = chartOptions.current.xScale.range();
       const lineX = x < xMin ? xMin : x > xMax ? xMax : x;
       attributes.current
@@ -1420,49 +1421,60 @@ function PanelChart(props) {
 
       const xAlignment = chart.settings.persistent.xAlignment;
       let xAxisValueText;
+      let xAxisTickValue =
+        +step < xMinValue ? xMinValue : +step > xMaxValue ? xMaxValue : +step;
 
       switch (xAlignment) {
         case 'epoch':
-          xAxisValueText = Object.values(
-            traceList.epochSteps[props.index],
-          ).findIndex((epoch) => epoch.includes(+step));
+          const epochs = Object.keys(traceList.epochSteps[props.index]);
+          xAxisValueText =
+            epochs.find((epoch) =>
+              traceList.epochSteps[props.index][epoch].includes(xAxisTickValue),
+            ) ?? epochs[epochs.length - 1];
           break;
         case 'relative_time':
-          xAxisValueText = shortEnglishHumanizer(Math.round(+step * 1000), {
-            ...humanizerConfig.current,
-            maxDecimalPoints: 2,
-          });
+          xAxisValueText = shortEnglishHumanizer(
+            Math.round(xAxisTickValue * 1000),
+            {
+              ...humanizerConfig.current,
+              maxDecimalPoints: 2,
+            },
+          );
           break;
         case 'absolute_time':
-          xAxisValueText = moment.unix(+step).format('HH:mm:ss D MMM, YY');
+          xAxisValueText = moment
+            .unix(xAxisTickValue)
+            .format('HH:mm:ss D MMM, YY');
           break;
         default:
-          xAxisValueText = step;
+          xAxisValueText = xAxisTickValue;
       }
 
-      xAxisValue.current = visArea
-        .append('div')
-        .attr('class', 'ChartMouseValue xAxis')
-        .style(
-          'top',
-          `${
-            visBox.current.height -
-            (visBox.current.margin.bottom + (isXLogScale ? 5 : 0)) +
-            1
-          }px`,
-        )
-        .text(xAxisValueText);
+      if (xAxisValueText !== 'null') {
+        xAxisValue.current = visArea
+          .append('div')
+          .attr('class', 'ChartMouseValue xAxis')
+          .style(
+            'top',
+            `${
+              visBox.current.height -
+              (visBox.current.margin.bottom + (isXLogScale ? 5 : 0)) +
+              1
+            }px`,
+          )
+          .text(xAxisValueText);
 
-      const axisLeftEdge = visBox.current.width - visBox.current.margin.right;
-      const xAxisValueWidth = xAxisValue.current.node().offsetWidth;
-      xAxisValue.current.style(
-        'left',
-        `${
-          x + visBox.current.margin.left + xAxisValueWidth / 2 > axisLeftEdge
-            ? axisLeftEdge - xAxisValueWidth / 2
-            : x + visBox.current.margin.left
-        }px`,
-      );
+        const axisLeftEdge = visBox.current.width - visBox.current.margin.right;
+        const xAxisValueWidth = xAxisValue.current.node().offsetWidth;
+        xAxisValue.current.style(
+          'left',
+          `${
+            x + visBox.current.margin.left + xAxisValueWidth / 2 > axisLeftEdge
+              ? axisLeftEdge - xAxisValueWidth / 2
+              : x + visBox.current.margin.left
+          }px`,
+        );
+      }
     }
 
     // Draw circles
