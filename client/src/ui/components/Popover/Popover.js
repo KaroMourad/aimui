@@ -113,7 +113,10 @@ function Popover(props) {
               ? props.targetClassName(opened)
               : props.targetClassName]: !!props.targetClassName,
           })}
-          onClick={(evt) => setOpened(!opened)}
+          onClick={(evt) => {
+            evt.stopPropagation();
+            setOpened(!opened);
+          }}
         >
           {typeof props.target === 'function'
             ? props.target(opened)
