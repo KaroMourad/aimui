@@ -1,7 +1,6 @@
 # Changelog
 
-## Unreleased
-
+## 1.6.0 May 13 2021
 - Add confidence interval aggregation mode (roubkar)
 - Display group config inside chart popover (roubkar)
 - Fix X axis tick labels overlap issue (roubkar)
