@@ -137,6 +137,7 @@ function Aggregate(props) {
                 { key: 'min_max', name: 'Min/Max' },
                 { key: 'std_dev', name: 'Mean ± Standard Deviation' },
                 { key: 'std_err', name: 'Mean ± Standard Error' },
+                { key: 'conf_int', name: 'Confidence Interval (95%)' },
               ].map((method) => (
                 <div
                   key={method.key}
@@ -151,6 +152,13 @@ function Aggregate(props) {
                   }}
                 >
                   <UI.Text small>{method.name}</UI.Text>
+                  {method.key === 'conf_int' && (
+                    <span className='ControlsSidebar__item__popup__list__item__icon'>
+                      <UI.Tooltip tooltip='Calculated with z-distribution'>
+                        <UI.Icon i='help_outline' />
+                      </UI.Tooltip>
+                    </span>
+                  )}
                 </div>
               ))}
             </div>

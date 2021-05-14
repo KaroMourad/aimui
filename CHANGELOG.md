@@ -1,7 +1,10 @@
 # Changelog
 
-## Unreleased
-
+## 1.6.0 May 13 2021
+- Add confidence interval aggregation mode (roubkar)
+- Display group config inside chart popover (roubkar)
+- Fix X axis tick labels overlap issue (roubkar)
+- Optimize explore panel chart interactions performance (roubkar)
 - Fix problem with drawing large range svg paths (roubkar)
 - Display horizontal hoverline and cursor position value on axes (roubkar)
 - Add ability to select zoom mode for better UX (roubkar)

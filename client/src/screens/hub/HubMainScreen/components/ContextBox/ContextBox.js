@@ -803,8 +803,13 @@ function ContextBox(props) {
                     traceModel.aggregation.stdErrMin?.trace.data,
                     step,
                   )?.[0];
+                case 'conf_int':
+                  aggAreaMin = getMetricStepDataByStepIdx(
+                    traceModel.aggregation.confIntMin?.trace.data,
+                    step,
+                  )?.[0];
                   aggAreaMax = getMetricStepDataByStepIdx(
-                    traceModel.aggregation.stdErrMax?.trace.data,
+                    traceModel.aggregation.confIntMax?.trace.data,
                     step,
                   )?.[0];
                   break;
@@ -1431,6 +1436,16 @@ function ContextBox(props) {
                         ? roundValue(stdErrMin)
                         : '-';
                     break;
+                  case 'conf_int':
+                    const confIntMin = getMetricStepDataByStepIdx(
+                      traceModel.aggregation.confIntMin?.trace.data,
+                      step,
+                    )?.[0];
+                    groupValueCellMin.textContent =
+                      confIntMin !== null && confIntMin !== undefined
+                        ? roundValue(confIntMin)
+                        : '-';
+                    break;
                   default:
                     const min = getMetricStepDataByStepIdx(
                       traceModel.aggregation.min?.trace.data,
@@ -1464,6 +1479,16 @@ function ContextBox(props) {
                     groupValueCellMax.textContent =
                       stdErrMax !== null && stdErrMax !== undefined
                         ? roundValue(stdErrMax)
+                        : '-';
+                    break;
+                  case 'conf_int':
+                    const confIntMax = getMetricStepDataByStepIdx(
+                      traceModel.aggregation.confIntMax?.trace.data,
+                      step,
+                    )?.[0];
+                    groupValueCellMax.textContent =
+                      confIntMax !== null && confIntMax !== undefined
+                        ? roundValue(confIntMax)
                         : '-';
                     break;
                   default:

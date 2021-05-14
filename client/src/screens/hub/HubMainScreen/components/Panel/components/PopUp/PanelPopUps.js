@@ -37,6 +37,7 @@ function PanelPopUps(props) {
     metric: null,
     trace: null,
     point: null,
+    groupConfig: null,
   });
   let [tagPopUp, setTagPopUp] = useState({
     display: false,
@@ -60,9 +61,10 @@ function PanelPopUps(props) {
   });
   let tagsWrapper = useRef();
 
-  const { chart } = HubMainScreenModel.useHubMainScreenState([
+  const { chart, contextFilter } = HubMainScreenModel.useHubMainScreenState([
     HubMainScreenModel.events.SET_CHART_FOCUSED_STATE,
     HubMainScreenModel.events.SET_CHART_FOCUSED_ACTIVE_STATE,
+    HubMainScreenModel.events.SET_CONTEXT_FILTER,
   ]);
 
   let {
@@ -358,9 +360,36 @@ function PanelPopUps(props) {
         let point = isParamMode
           ? [focusedCircle.contentType, focusedCircle.param]
           : line?.data?.[line?.axisValues?.indexOf(focusedCircle.step)] ?? [];
-        if (isParamMode) {
-          HubMainScreenModel.getState().traceList?.traces.forEach(
-            (traceModel) => {
+
+        let groupConfig =
+          HubMainScreenModel.getState().traceList?.traces.length > 1
+            ? {}
+            : null;
+        HubMainScreenModel.getState().traceList?.traces.forEach(
+          (traceModel) => {
+            if (
+              groupConfig !== null &&
+              traceModel.hasRun(
+                focusedCircle.runHash,
+                focusedCircle.metricName,
+                focusedCircle.traceContext,
+              )
+            ) {
+              groupConfig = {};
+              let groupFields = HubMainScreenModel.getState().traceList
+                .grouping;
+              for (let key in groupFields) {
+                if (groupFields[key].length > 0) {
+                  groupConfig[key] = groupFields[key].map((param) => ({
+                    key: param.startsWith('params.')
+                      ? param.substring(7)
+                      : param,
+                    value: formatValue(traceModel.config[param]),
+                  }));
+                }
+              }
+            }
+            if (isParamMode) {
               _.uniqBy(traceModel.series, 'run.run_hash').forEach((series) => {
                 if (series.run.run_hash !== focusedCircle.runHash) {
                   return;
@@ -386,9 +415,9 @@ function PanelPopUps(props) {
                   );
                 }
               });
-            },
-          );
-        }
+            }
+          },
+        );
         setChartPopUp((cp) => ({
           ...cp,
           selectedTags: [],
@@ -418,6 +447,7 @@ function PanelPopUps(props) {
               metric: line.metric,
               trace: line.trace,
               point: point,
+              groupConfig: groupConfig,
             }));
           }
         }, 100);
@@ -430,7 +460,13 @@ function PanelPopUps(props) {
     } else {
       hideActionPopUps(false);
     }
-  }, [chart.focused.circle]);
+  }, [
+    chart.focused.circle,
+    contextFilter.groupByColor,
+    contextFilter.groupByStyle,
+    contextFilter.groupByChart,
+    contextFilter.groupAgainst,
+  ]);
 
   useEffect(() => {
     updatePopUpPosition();
@@ -503,6 +539,28 @@ function PanelPopUps(props) {
                   </div>
                 )}
               </>
+            )}
+            {chartPopUp.groupConfig !== null && (
+              <div className='ChartPopUp__groupConfig'>
+                <UI.Line />
+                <UI.Text type='black'>Group Config</UI.Text>
+                {Object.keys(chartPopUp.groupConfig).map((key) => (
+                  <div key={key} className='ChartPopUp__groupConfig__type'>
+                    <UI.Text type='black' small>
+                      {key === 'color'
+                        ? 'Color params'
+                        : key === 'stroke'
+                          ? 'Stroke style params'
+                          : 'Chart params'}
+                    </UI.Text>
+                    {chartPopUp.groupConfig[key].map((param) => (
+                      <UI.Text key={param.key} type='grey' small>
+                        {param.key}: {param.value}
+                      </UI.Text>
+                    ))}
+                  </div>
+                ))}
+              </div>
             )}
             {isAimRun(chartPopUp.run ?? {}) && (
               <>
