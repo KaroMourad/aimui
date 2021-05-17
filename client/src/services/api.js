@@ -5,7 +5,7 @@ import { SERVER_HOST } from '../config';
 function setApiClient() {
   return new Promise((resolve, reject) => {
     if (!window.ApiClient) {
-      Swagger('/swagger.0.0.8.yaml')
+      Swagger('/static-files/swagger.0.0.8.yaml')
         .then((client) => {
           client.spec.servers = [
             {
