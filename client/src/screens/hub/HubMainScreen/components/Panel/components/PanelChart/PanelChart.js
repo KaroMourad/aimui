@@ -797,15 +797,15 @@ function PanelChart(props) {
       brush.current = d3
         .brush()
         .extent([
-          [margin.left, margin.top],
+          [0, 0],
           [
-            width - margin.right,
-            height - (margin.bottom + (isXLogScale ? 5 : 0)),
+            width - margin.left - margin.right,
+            height - (margin.top + margin.bottom + (isXLogScale ? 5 : 0)),
           ],
         ])
         .on('end', handleZoomChange);
 
-      svg.current.append('g').attr('class', 'brush').call(brush.current);
+      plot.current.append('g').attr('class', 'brush').call(brush.current);
     }
   }
 
@@ -1630,17 +1630,11 @@ function PanelChart(props) {
         },
       });
     } else {
-      const { margin } = visBox.current;
+      let left = chartOptions.current.xScale.invert(extent[0][0]);
+      let right = chartOptions.current.xScale.invert(extent[1][0]);
 
-      let left = chartOptions.current.xScale.invert(extent[0][0] - margin.left);
-      let right = chartOptions.current.xScale.invert(
-        extent[1][0] - margin.left,
-      );
-
-      let top = chartOptions.current.yScale.invert(extent[0][1] - margin.top);
-      let bottom = chartOptions.current.yScale.invert(
-        extent[1][1] - margin.top,
-      );
+      let top = chartOptions.current.yScale.invert(extent[0][1]);
+      let bottom = chartOptions.current.yScale.invert(extent[1][1]);
 
       let [xMin, xMax] = chartOptions.current.xScale.domain();
       let [yMin, yMax] = chartOptions.current.yScale.domain();
