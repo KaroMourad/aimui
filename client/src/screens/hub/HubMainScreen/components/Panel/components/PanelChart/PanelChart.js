@@ -7,7 +7,11 @@ import * as _ from 'lodash';
 import * as moment from 'moment';
 import humanizeDuration from 'humanize-duration';
 
-import { removeOutliers, formatValue } from '../../../../../../../utils';
+import {
+  removeOutliers,
+  formatValue,
+  findClosestIndex,
+} from '../../../../../../../utils';
 import { HubMainScreenModel } from '../../../../models/HubMainScreenModel';
 
 const d3 = require('d3');
@@ -96,13 +100,13 @@ function PanelChart(props) {
   const bgRect = useRef(null);
   const axes = useRef(null);
   const lines = useRef(null);
-  const circles = useRef(null);
   const attributes = useRef(null);
   const brush = useRef(null);
   const idleTimeout = useRef(null);
   const xAxisValue = useRef();
   const yAxisValue = useRef();
   const humanizerConfig = useRef();
+  const traces = useRef({});
 
   function getValueInLine({ x1, x2, y1, y2, x, y, scale }) {
     if (x === undefined) {
@@ -372,12 +376,245 @@ function PanelChart(props) {
     }
 
     drawArea();
+    processData();
     drawAxes();
-    drawData();
+    drawChart();
     bindInteractions();
   }
 
-  function drawData() {
+  function processData() {
+    const { traceList, chart } = HubMainScreenModel.getState();
+    const { width, height, margin } = visBox.current;
+    const isXLogScale =
+      scaleOptions[chart.settings.persistent.xScale] === 'log';
+    const isYLogScale =
+      scaleOptions[chart.settings.persistent.yScale] === 'log';
+
+    let xSteps = [];
+    let yValues = [];
+    let minData = [];
+    let maxData = [];
+
+    traceList?.traces.forEach((traceModel) => {
+      traceModel.series.forEach((series) => {
+        if (traceModel.chart !== props.index) {
+          return;
+        }
+        const { trace } = series;
+        if (trace?.data) {
+          let axisValues = isXLogScale
+            ? trace.axisValues.filter((v) => v > 0)
+            : trace.axisValues;
+          xSteps = _.uniq(xSteps.concat(axisValues).sort((a, b) => a - b));
+
+          if (chart.settings.persistent.displayOutliers) {
+            let traceValues = trace.data.map((elem) => elem[0]);
+            traceValues = isYLogScale
+              ? traceValues.filter((v) => v > 0)
+              : traceValues;
+
+            yValues = _.uniq(yValues.concat(traceValues).sort((a, b) => a - b));
+          } else {
+            trace.data.forEach((elem, elemIdx) => {
+              if (!isYLogScale || elem[0] > 0) {
+                if (minData.length > elemIdx) {
+                  minData[elemIdx].push(elem[0]);
+                } else {
+                  minData.push([elem[0]]);
+                }
+                if (maxData.length > elemIdx) {
+                  maxData[elemIdx].push(elem[0]);
+                } else {
+                  maxData.push([elem[0]]);
+                }
+              }
+            });
+          }
+        }
+      });
+    });
+
+    let xNum = xSteps.length;
+    let xMin = xSteps[0];
+    let xMax = xSteps[xNum - 1];
+    let yMin;
+    let yMax;
+
+    if (chart.settings.persistent.displayOutliers) {
+      yMin = yValues[0];
+      yMax = yValues[yValues.length - 1];
+    } else {
+      minData = minData.map((e) => Math.min(...e));
+      minData = removeOutliers(minData, 4);
+
+      maxData = maxData.map((e) => Math.max(...e));
+      maxData = removeOutliers(maxData, 4);
+
+      yMin = minData[0];
+      yMax = maxData[maxData.length - 1];
+    }
+
+    let xScaleBase;
+    if (isXLogScale) {
+      xScaleBase = d3.scaleLog();
+    } else {
+      xScaleBase = d3.scaleLinear();
+    }
+
+    const xScale = xScaleBase
+      .domain(chart.settings.persistent.zoom?.[props.index]?.x ?? [xMin, xMax])
+      .range([0, width - margin.left - margin.right]);
+
+    let yScaleBase;
+    if (isYLogScale) {
+      yScaleBase = d3.scaleLog();
+    } else {
+      if (yMax === yMin) {
+        yMax += 1;
+        yMin -= 1;
+      } else {
+        const diff = yMax - yMin;
+        yMax += diff * 0.1;
+        yMin -= diff * 0.05;
+      }
+      yScaleBase = d3.scaleLinear();
+    }
+
+    const yScale = yScaleBase
+      .domain(chart.settings.persistent.zoom?.[props.index]?.y ?? [yMin, yMax])
+      .range([
+        height - margin.top - (margin.bottom + (isXLogScale ? 5 : 0)),
+        0,
+      ]);
+
+    chartOptions.current = {
+      ...chartOptions.current,
+      xNum,
+      xMax,
+      xSteps,
+      xScale,
+      yScale,
+    };
+
+    traces.current = {};
+
+    let runIndex = 0;
+
+    traceList?.traces.forEach((traceModel) =>
+      traceModel.series.forEach((series) => {
+        if (traceModel.chart !== props.index) {
+          runIndex++;
+          return;
+        }
+        const { run, metric, trace } = series;
+
+        if (run.metricIsHidden) {
+          runIndex++;
+          return;
+        }
+        const traceData = [];
+        const axisValues = trace.axisValues.filter((xVal, i) => {
+          if (
+            (isXLogScale && xVal <= 0) ||
+            (isYLogScale && trace?.data[i]?.[0] <= 0)
+          ) {
+            return false;
+          }
+          if (!!trace?.data) {
+            traceData.push(trace?.data[i]);
+          }
+          return true;
+        });
+
+        const lineData = calculateLineValues({
+          axisValues: axisValues,
+          traceData: traceData,
+          xMin: chartOptions.current.xScale.domain()[0],
+          xMax: chartOptions.current.xScale.domain()[1],
+          yMin: chartOptions.current.yScale.domain()[0],
+          yMax: chartOptions.current.yScale.domain()[1],
+          scale: {
+            xScale: chart.settings.persistent.xScale,
+            yScale: chart.settings.persistent.yScale,
+          },
+        });
+
+        const traceContext = contextToHash(trace?.context);
+
+        const traceKey = traceToHash(run.run_hash, metric?.name, traceContext);
+
+        traces.current[traceKey] = {
+          axisValues: axisValues,
+          data: lineData,
+          key: traceKey,
+          color:
+            traceList?.grouping?.color?.length > 0
+              ? traceModel.color
+              : getMetricColor(run, metric, trace, runIndex),
+          stroke:
+            traceList?.grouping?.stroke?.length > 0 ? traceModel.stroke : '0',
+          runHash: run.run_hash,
+          metricName: metric?.name,
+          traceContext: traceContext,
+        };
+
+        runIndex++;
+      }),
+    );
+  }
+
+  function updateChart() {
+    const { chart } = HubMainScreenModel.getState();
+    if (chart.focused.circle.active) {
+      return;
+    }
+
+    const highlightMode = chart.settings.highlightMode;
+    const focusedMetric = chart.focused.metric;
+
+    attributes.current?.selectAll('circle').remove();
+    attributes.current?.selectAll('line').remove();
+    if (yAxisValue.current) {
+      yAxisValue.current.remove();
+      yAxisValue.current = null;
+    }
+    drawHoverAttributes();
+
+    if (chart.settings.persistent.aggregated) {
+      lines.current?.selectAll('path').remove();
+      drawAggregatedLines();
+    } else {
+      const noSelectedRun =
+        highlightMode === 'default' || !focusedMetric.runHash;
+
+      lines.current.classed('highlight', !noSelectedRun);
+
+      lines.current?.selectAll('.PlotLine.active').classed('active', false);
+      lines.current?.selectAll('.PlotLine.current').classed('current', false);
+
+      if (highlightMode === 'run') {
+        lines.current
+          ?.selectAll(
+            `.PlotLine-${btoa(focusedMetric.runHash).replace(/[\=\+\/]/g, '')}`,
+          )
+          .classed('active', true)
+          .moveToFront();
+      }
+
+      lines.current
+        ?.selectAll(
+          `.PlotLine-${traceToHash(
+            focusedMetric.runHash,
+            focusedMetric.metricName,
+            focusedMetric.traceContext,
+          )}`,
+        )
+        .classed('current', true)
+        .moveToFront();
+    }
+  }
+
+  function drawChart() {
     const { chart } = HubMainScreenModel.getState();
     if (chart.settings.persistent.aggregated) {
       drawAggregatedLines();
@@ -547,7 +784,10 @@ function PanelChart(props) {
       .append('rect')
       .attr('x', -7)
       .attr('y', 0)
-      .attr('width', width - margin.left - margin.right + 14)
+      .attr(
+        'width',
+        width - margin.left - margin.right + 2 * circleActiveRadius,
+      )
       .attr(
         'height',
         height - margin.top - (margin.bottom + (isXLogScale ? 5 : 0)),
@@ -571,13 +811,9 @@ function PanelChart(props) {
 
   function drawAxes() {
     const { traceList, chart } = HubMainScreenModel.getState();
-    const { width, height, margin } = visBox.current;
     const xAlignment = chart.settings.persistent.xAlignment;
-
-    let xNum = 0;
-    let xMax = 0;
-    let xMin = Infinity;
-    let xSteps = [];
+    const isXLogScale =
+      scaleOptions[chart.settings.persistent.xScale] === 'log';
     let xTicks = [];
 
     if (xAlignment === 'epoch' && traceList.epochSteps[props.index]) {
@@ -589,151 +825,12 @@ function PanelChart(props) {
       });
     }
 
-    traceList?.traces.forEach((traceModel) => {
-      traceModel.series.forEach((series) => {
-        if (traceModel.chart !== props.index) {
-          return;
-        }
-        const { run, metric, trace } = series;
-        const max = trace.axisValues[trace.axisValues.length - 1];
-        let min = trace.axisValues[0];
-        if (
-          scaleOptions[chart.settings.persistent.xScale] === 'log' &&
-          min === 0
-        ) {
-          min = trace.axisValues[1] ?? min;
-        }
-        if (max > xMax) {
-          xMax = max;
-        }
-        if (min < xMin) {
-          if (scaleOptions[chart.settings.persistent.xScale] === 'log') {
-            xMin = min === 0 ? 1 : min;
-          } else {
-            xMin = min;
-          }
-        }
+    let xAxisTicks = d3.axisBottom(chartOptions.current.xScale);
 
-        xSteps = _.uniq(xSteps.concat(trace.axisValues).sort((a, b) => a - b));
-        xNum = xSteps.length;
-      });
-    });
-
-    let xScaleBase;
-    if (scaleOptions[chart.settings.persistent.xScale || 0] === 'linear') {
-      xScaleBase = d3.scaleLinear();
-    } else if (scaleOptions[chart.settings.persistent.xScale] === 'log') {
-      xScaleBase = d3.scaleLog();
-    }
-
-    const xScale = xScaleBase
-      .domain(chart.settings.persistent.zoom?.[props.index]?.x ?? [xMin, xMax])
-      .range([0, width - margin.left - margin.right]);
-
-    let yMax = null,
-      yMin = null;
-
-    if (chart.settings.persistent.displayOutliers) {
-      traceList?.traces.forEach((traceModel) =>
-        traceModel.series.forEach((series) => {
-          if (traceModel.chart !== props.index) {
-            return;
-          }
-          const { run, metric, trace } = series;
-          let traceValues =
-            trace && trace.data.map((elem) => elem[0]).sort((a, b) => a - b);
-          if (scaleOptions[chart.settings.persistent.yScale] === 'log') {
-            traceValues = traceValues?.filter((v) => v > 0);
-          }
-          const traceMax = traceValues?.[traceValues?.length - 1];
-          const traceMin = traceValues?.[0];
-
-          if ((yMax === null && traceMax !== undefined) || traceMax > yMax) {
-            yMax = traceMax;
-          }
-          if ((yMin === null && traceMin !== undefined) || traceMin < yMin) {
-            yMin = traceMin;
-          }
-        }),
-      );
-    } else {
-      let minData = [],
-        maxData = [];
-      traceList?.traces.forEach((traceModel) =>
-        traceModel.series.forEach((series) => {
-          if (traceModel.chart !== props.index) {
-            return;
-          }
-          const { run, metric, trace } = series;
-          if (trace?.data) {
-            trace.data.forEach((elem, elemIdx) => {
-              if (
-                scaleOptions[chart.settings.persistent.yScale] !== 'log' ||
-                elem[0] > 0
-              ) {
-                if (minData.length > elemIdx) {
-                  minData[elemIdx].push(elem[0]);
-                } else {
-                  minData.push([elem[0]]);
-                }
-                if (maxData.length > elemIdx) {
-                  maxData[elemIdx].push(elem[0]);
-                } else {
-                  maxData.push([elem[0]]);
-                }
-              }
-            });
-          }
-        }),
-      );
-
-      minData = minData.map((e) => Math.min(...e));
-      minData = removeOutliers(minData, 4);
-
-      maxData = maxData.map((e) => Math.max(...e));
-      maxData = removeOutliers(maxData, 4);
-
-      yMin = minData[0];
-      if (
-        scaleOptions[chart.settings.persistent.yScale] === 'log' &&
-        yMin === 0
-      ) {
-        yMin = minData[1];
-      }
-      yMax = maxData[maxData.length - 1];
-    }
-
-    let yScaleBase;
-    if (scaleOptions[chart.settings.persistent.yScale || 0] === 'linear') {
-      if (yMax === yMin) {
-        yMax += 1;
-        yMin -= 1;
-      } else {
-        const diff = yMax - yMin;
-        yMax += diff * 0.1;
-        yMin -= diff * 0.05;
-      }
-      yScaleBase = d3.scaleLinear();
-    } else if (scaleOptions[chart.settings.persistent.yScale] === 'log') {
-      if (yMin === 0) {
-        yMin = 0.1;
-      }
-      yScaleBase = d3.scaleLog();
-    }
-
-    const isXLogScale =
-      scaleOptions[chart.settings.persistent.xScale] === 'log';
-
-    const yScale = yScaleBase
-      .domain(chart.settings.persistent.zoom?.[props.index]?.y ?? [yMin, yMax])
-      .range([
-        height - margin.top - (margin.bottom + (isXLogScale ? 5 : 0)),
-        0,
-      ]);
-
-    let xAxisTicks = d3.axisBottom(xScale);
-
-    if (xAlignment === 'epoch') {
+    if (xAlignment === 'step') {
+      const ticksCount = Math.floor(plotBox.current.width / 50);
+      xAxisTicks.ticks(ticksCount > 1 ? ticksCount - 1 : 1);
+    } else if (xAlignment === 'epoch') {
       const ticksCount = Math.floor(plotBox.current.width / 50);
       const delta = Math.floor(xTicks.length / ticksCount);
       const ticks =
@@ -748,7 +845,7 @@ function PanelChart(props) {
       const hour = 60 * minute;
       const day = 24 * hour;
       const week = 7 * day;
-      const [first, last] = xScale.domain();
+      const [first, last] = chartOptions.current.xScale.domain();
       const diff = Math.ceil(last - first);
       let unit;
       let formatUnit;
@@ -799,7 +896,7 @@ function PanelChart(props) {
     } else if (xAlignment === 'absolute_time') {
       let ticksCount = Math.floor(plotBox.current.width / 120);
       ticksCount = ticksCount > 1 ? ticksCount - 1 : 1;
-      const tickValues = _.range(...xScale.domain());
+      const tickValues = _.range(...chartOptions.current.xScale.domain());
 
       xAxisTicks
         .ticks(ticksCount > 1 ? ticksCount - 1 : 1)
@@ -826,7 +923,7 @@ function PanelChart(props) {
     const initialTicks = axes.current.selectAll('.tick');
     const ticksPositions = [];
     initialTicks.each((data) => {
-      ticksPositions.push(xScale(data));
+      ticksPositions.push(chartOptions.current.xScale(data));
     });
 
     for (let i = ticksPositions.length - 1; i > 0; i--) {
@@ -877,24 +974,15 @@ function PanelChart(props) {
 
     plot.current.moveToFront();
 
-    const yAxisTicks = d3.axisLeft(yScale);
+    const yAxisTicks = d3.axisLeft(chartOptions.current.yScale);
     const ticksCount = Math.floor(plotBox.current.height / 20);
     yAxisTicks.ticks(ticksCount > 3 ? (ticksCount < 20 ? ticksCount : 20) : 3);
 
     axes.current.append('g').attr('class', 'y axis').call(yAxisTicks);
-
-    chartOptions.current = {
-      ...chartOptions.current,
-      xNum,
-      xMax,
-      xSteps,
-      xScale,
-      yScale,
-    };
   }
 
   function drawLines() {
-    const { traceList, chart } = HubMainScreenModel.getState();
+    const { chart } = HubMainScreenModel.getState();
     const highlightMode = chart.settings.highlightMode;
 
     const focusedMetric = chart.focused.metric;
@@ -905,112 +993,56 @@ function PanelChart(props) {
     const noSelectedRun =
       highlightMode === 'default' || !focusedLineAttr.runHash;
 
-    let runIndex = 0;
+    lines.current.classed('highlight', !noSelectedRun);
 
-    traceList?.traces.forEach((traceModel) =>
-      traceModel.series.forEach((series) => {
-        if (traceModel.chart !== props.index) {
-          runIndex++;
-          return;
-        }
-        const { run, metric, trace } = series;
+    const line = d3
+      .line()
+      .x((d) => d.x)
+      .y((d) => d.y)
+      .curve(
+        d3[
+          curveOptions[
+            chart.settings.persistent.interpolate &&
+            !chart.settings.persistent.aggregated
+              ? 5
+              : 0
+          ]
+        ],
+      );
 
-        if (run.metricIsHidden) {
-          runIndex++;
-          return;
-        }
+    for (let traceKey in traces.current) {
+      let trace = traces.current[traceKey];
 
-        const traceData = [];
-        const axisValues = trace.axisValues.filter((xVal, i) => {
-          const isXLogScale =
-            scaleOptions[chart.settings.persistent.xScale] === 'log';
-          const isYLogScale =
-            scaleOptions[chart.settings.persistent.yScale] === 'log';
-          if (
-            (isXLogScale && xVal <= 0) ||
-            (isYLogScale && trace?.data[i]?.[0] <= 0)
-          ) {
-            return false;
-          }
-          if (!!trace?.data) {
-            traceData.push(trace?.data[i]);
-          }
-          return true;
+      const active =
+        highlightMode === 'run' && focusedLineAttr.runHash === trace.runHash;
+      const current =
+        focusedLineAttr.runHash === trace.runHash &&
+        focusedLineAttr.metricName === trace.metricName &&
+        focusedLineAttr.traceContext === trace.traceContext;
+      lines.current
+        .append('path')
+        .attr(
+          'class',
+          `PlotLine PlotLine-${btoa(trace.runHash).replace(
+            /[\=\+\/]/g,
+            '',
+          )} PlotLine-${traceKey} ${active ? 'active' : ''} ${
+            current ? 'current' : ''
+          }`,
+        )
+        .datum(trace.data)
+        .attr('d', line)
+        .attr('clip-path', 'url(#lines-rect-clip-' + props.index + ')')
+        .style('fill', 'none')
+        .style('stroke', trace.color)
+        .style('stroke-dasharray', trace.stroke)
+        .attr('data-run-hash', trace.runHash)
+        .attr('data-metric-name', trace.metricName)
+        .attr('data-trace-context-hash', trace.traceContext)
+        .on('click', function () {
+          handleLineClick(d3.mouse(this));
         });
-
-        const lineData = calculateLineValues({
-          axisValues: axisValues,
-          traceData: traceData,
-          xMin: chartOptions.current.xScale.domain()[0],
-          xMax: chartOptions.current.xScale.domain()[1],
-          yMin: chartOptions.current.yScale.domain()[0],
-          yMax: chartOptions.current.yScale.domain()[1],
-          scale: {
-            xScale: chart.settings.persistent.xScale,
-            yScale: chart.settings.persistent.yScale,
-          },
-        });
-
-        const line = d3
-          .line()
-          .x((d) => d.x)
-          .y((d) => d.y)
-          .curve(
-            d3[
-              curveOptions[
-                chart.settings.persistent.interpolate &&
-                !chart.settings.persistent.aggregated
-                  ? 5
-                  : 0
-              ]
-            ],
-          );
-
-        const traceContext = contextToHash(trace?.context);
-
-        const active =
-          highlightMode === 'run' && focusedLineAttr.runHash === run.run_hash;
-        const current =
-          focusedLineAttr.runHash === run.run_hash &&
-          focusedLineAttr.metricName === metric?.name &&
-          focusedLineAttr.traceContext === traceContext;
-
-        lines.current
-          .append('path')
-          .attr(
-            'class',
-            `PlotLine PlotLine-${run.run_hash} PlotLine-${traceToHash(
-              run.run_hash,
-              metric?.name,
-              traceContext,
-            )} ${noSelectedRun ? '' : 'inactive'} ${active ? 'active' : ''} ${
-              current ? 'current' : ''
-            }`,
-          )
-          .datum(lineData)
-          .attr('d', line)
-          .attr('clip-path', 'url(#lines-rect-clip-' + props.index + ')')
-          .style('fill', 'none')
-          .style(
-            'stroke',
-            traceList?.grouping?.color?.length > 0
-              ? traceModel.color
-              : getMetricColor(run, metric, trace, runIndex),
-          )
-          .style(
-            'stroke-dasharray',
-            traceList?.grouping?.stroke?.length > 0 ? traceModel.stroke : '0',
-          )
-          .attr('data-run-hash', run.run_hash)
-          .attr('data-metric-name', metric?.name)
-          .attr('data-trace-context-hash', traceContext)
-          .on('click', function () {
-            handleLineClick(d3.mouse(this));
-          });
-
-        runIndex++;
-      }),
-    );
+    }
   }
 
   function drawAggregatedLines() {
@@ -1024,6 +1056,9 @@ function PanelChart(props) {
         : focusedMetric.runHash !== null
           ? focusedMetric
           : null;
+
+    const noSelectedRun =
+      highlightMode === 'default' || !focusedLineAttr?.runHash;
     traceList?.traces.forEach((traceModel) => {
       if (traceModel.chart !== props.index) {
         return;
@@ -1046,6 +1081,10 @@ function PanelChart(props) {
           areaTraceMin = traceModel.aggregation.stdErrMin;
           areaTraceMax = traceModel.aggregation.stdErrMax;
           break;
+        case 'conf_int':
+          areaTraceMin = traceModel.aggregation.confIntMin;
+          areaTraceMax = traceModel.aggregation.confIntMax;
+          break;
       }
 
       switch (contextFilter.aggregatedLine) {
@@ -1062,9 +1101,6 @@ function PanelChart(props) {
           lineTrace = traceModel.aggregation.max;
           break;
       }
-
-      const noSelectedRun =
-        highlightMode === 'default' || !focusedLineAttr?.runHash;
 
       const active =
         highlightMode === 'run'
@@ -1364,6 +1400,7 @@ function PanelChart(props) {
 
     if (!isXLogScale || step > 0) {
       // Draw vertical hover line
+      const [xMinValue, xMaxValue] = chartOptions.current.xScale.domain();
       const [xMin, xMax] = chartOptions.current.xScale.range();
       const lineX = x < xMin ? xMin : x > xMax ? xMax : x;
       attributes.current
@@ -1384,49 +1421,60 @@ function PanelChart(props) {
 
       const xAlignment = chart.settings.persistent.xAlignment;
       let xAxisValueText;
+      let xAxisTickValue =
+        +step < xMinValue ? xMinValue : +step > xMaxValue ? xMaxValue : +step;
 
       switch (xAlignment) {
         case 'epoch':
-          xAxisValueText = Object.values(
-            traceList.epochSteps[props.index],
-          ).findIndex((epoch) => epoch.includes(+step));
+          const epochs = Object.keys(traceList.epochSteps[props.index]);
+          xAxisValueText =
+            epochs.find((epoch) =>
+              traceList.epochSteps[props.index][epoch].includes(xAxisTickValue),
+            ) ?? epochs[epochs.length - 1];
           break;
         case 'relative_time':
-          xAxisValueText = shortEnglishHumanizer(Math.round(+step * 1000), {
-            ...humanizerConfig.current,
-            maxDecimalPoints: 2,
-          });
+          xAxisValueText = shortEnglishHumanizer(
+            Math.round(xAxisTickValue * 1000),
+            {
+              ...humanizerConfig.current,
+              maxDecimalPoints: 2,
+            },
+          );
           break;
         case 'absolute_time':
-          xAxisValueText = moment.unix(+step).format('HH:mm:ss D MMM, YY');
+          xAxisValueText = moment
+            .unix(xAxisTickValue)
+            .format('HH:mm:ss D MMM, YY');
           break;
         default:
-          xAxisValueText = step;
+          xAxisValueText = xAxisTickValue;
       }
 
-      xAxisValue.current = visArea
-        .append('div')
-        .attr('class', 'ChartMouseValue xAxis')
-        .style(
-          'top',
-          `${
-            visBox.current.height -
-            (visBox.current.margin.bottom + (isXLogScale ? 5 : 0)) +
-            1
-          }px`,
-        )
-        .text(xAxisValueText);
+      if (xAxisValueText !== 'null') {
+        xAxisValue.current = visArea
+          .append('div')
+          .attr('class', 'ChartMouseValue xAxis')
+          .style(
+            'top',
+            `${
+              visBox.current.height -
+              (visBox.current.margin.bottom + (isXLogScale ? 5 : 0)) +
+              1
+            }px`,
+          )
+          .text(xAxisValueText);
 
-      const axisLeftEdge = visBox.current.width - visBox.current.margin.right;
-      const xAxisValueWidth = xAxisValue.current.node().offsetWidth;
-      xAxisValue.current.style(
-        'left',
-        `${
-          x + visBox.current.margin.left + xAxisValueWidth / 2 > axisLeftEdge
-            ? axisLeftEdge - xAxisValueWidth / 2
-            : x + visBox.current.margin.left
-        }px`,
-      );
+        const axisLeftEdge = visBox.current.width - visBox.current.margin.right;
+        const xAxisValueWidth = xAxisValue.current.node().offsetWidth;
+        xAxisValue.current.style(
+          'left',
+          `${
+            x + visBox.current.margin.left + xAxisValueWidth / 2 > axisLeftEdge
+              ? axisLeftEdge - xAxisValueWidth / 2
+              : x + visBox.current.margin.left
+          }px`,
+        );
+      }
     }
 
     // Draw circles
@@ -1434,245 +1482,116 @@ function PanelChart(props) {
     const focusedCircle = focused.circle;
     const focusedLineAttr =
       focusedCircle.runHash !== null ? focusedCircle : focusedMetric;
-    let focusedCircleElem = null;
 
-    circles.current = attributes.current.append('g');
+    for (let traceKey in traces.current) {
+      let trace = traces.current[traceKey];
 
-    let runIndex = 0;
+      const closestStepIndex = findClosestIndex(
+        trace.data.map((d) => d.x),
+        chartOptions.current.xScale(step),
+      );
+      const closestPoint = trace.data[closestStepIndex] ?? trace.data[0];
+      x = closestPoint?.x;
+      const closestStep = Math.round(chartOptions.current.xScale.invert(x));
+      let y = closestPoint?.y;
+      let val = chartOptions.current.yScale.invert(y);
 
-    traceList?.traces.forEach((traceModel) =>
-      traceModel.series.forEach((series) => {
-        if (traceModel.chart !== props.index) {
-          runIndex++;
-          return;
+      let shouldHighlightCircle;
+      if (highlightMode === 'default' || !focusedLineAttr.runHash) {
+        shouldHighlightCircle = true;
+      } else if (highlightMode === 'run') {
+        shouldHighlightCircle = focusedLineAttr.runHash === trace.runHash;
+      } else if (highlightMode === 'metric') {
+        shouldHighlightCircle =
+          focusedLineAttr.runHash === trace.runHash &&
+          focusedLineAttr.metricName === trace.metricName &&
+          focusedLineAttr.traceContext === trace.traceContext;
+      } else {
+        shouldHighlightCircle = false;
+      }
+
+      const active =
+        focusedMetric.runHash === trace.runHash &&
+        focusedMetric.metricName === trace.metricName &&
+        focusedMetric.traceContext === trace.traceContext;
+
+      const focused =
+        focusedCircle.runHash === trace.runHash &&
+        focusedCircle.metricName === trace.metricName &&
+        focusedCircle.traceContext === trace.traceContext;
+
+      attributes.current
+        .append('circle')
+        .attr(
+          'class',
+          `HoverCircle HoverCircle-${closestStep} ${
+            shouldHighlightCircle ? '' : 'inactive'
+          } HoverCircle-${traceKey} ${
+            focused ? 'focus' : active ? 'active' : ''
+          }`,
+        )
+        .attr('cx', x)
+        .attr('cy', y)
+        .attr('r', active || focused ? circleActiveRadius : circleRadius)
+        .attr('data-x', x)
+        .attr('data-y', y)
+        .attr('data-step', closestStep)
+        .attr('data-run-hash', trace.runHash)
+        .attr('data-metric-name', trace.metricName)
+        .attr('data-trace-context-hash', trace.traceContext)
+        .attr('clip-path', 'url(#circles-rect-clip-' + props.index + ')')
+        .style('fill', trace.color)
+        .on('click', function () {
+          handlePointClick(
+            closestStep,
+            trace.runHash,
+            trace.metricName,
+            trace.traceContext,
+          );
+        });
+
+      if (active || focused) {
+        // Draw horizontal hover line
+        const [yMax, yMin] = chartOptions.current.yScale.range();
+        const lineY = y < yMin ? yMin : y > yMax ? yMax : y;
+        attributes.current
+          .append('line')
+          .attr('x1', 0)
+          .attr('y1', lineY)
+          .attr('x2', width)
+          .attr('y2', lineY)
+          .attr('class', 'HoverLine')
+          .style('stroke-width', 1)
+          .style('stroke-dasharray', '4 2')
+          .style('fill', 'none');
+
+        if (yAxisValue.current) {
+          yAxisValue.current.remove();
+          yAxisValue.current = null;
         }
-        const { run, metric, trace } = series;
 
-        if (run.metricIsHidden) {
-          runIndex++;
-          return;
-        }
-
-        let { closestStep, stepData } = getClosestStepData(
-          step,
-          trace?.data,
-          trace?.axisValues,
-        );
-
-        let val = stepData?.[0] ?? null;
-
-        if ((isXLogScale && closestStep <= 0) || (isYLogScale && val <= 0)) {
-          runIndex++;
-          return;
-        }
-
-        if (val !== null) {
-          x = chartOptions.current.xScale(closestStep);
-          const y = chartOptions.current.yScale(val);
-          const traceContext = contextToHash(trace?.context);
-
-          let shouldHighlightCircle;
-          if (highlightMode === 'default' || !focusedLineAttr.runHash) {
-            shouldHighlightCircle = true;
-          } else if (highlightMode === 'run') {
-            shouldHighlightCircle = focusedLineAttr.runHash === run.run_hash;
-          } else if (highlightMode === 'metric') {
-            shouldHighlightCircle =
-              focusedLineAttr.runHash === run.run_hash &&
-              focusedLineAttr.metricName === metric?.name &&
-              focusedLineAttr.traceContext === traceContext;
-          } else {
-            shouldHighlightCircle = false;
-          }
-
-          let shoudDrawHorizontalHoverLine =
-            focusedLineAttr.runHash === run.run_hash &&
-            focusedLineAttr.metricName === metric?.name &&
-            focusedLineAttr.traceContext === traceContext;
-
-          if (shoudDrawHorizontalHoverLine) {
-            // Draw horizontal hover line
-            const [yMax, yMin] = chartOptions.current.yScale.range();
-            const lineY = y < yMin ? yMin : y > yMax ? yMax : y;
-            attributes.current
-              .append('line')
-              .attr('x1', 0)
-              .attr('y1', lineY)
-              .attr('x2', width)
-              .attr('y2', lineY)
-              .attr('class', 'HoverLine')
-              .style('stroke-width', 1)
-              .style('stroke-dasharray', '4 2')
-              .style('fill', 'none');
-
-            circles.current.moveToFront();
-
-            if (yAxisValue.current) {
-              yAxisValue.current.remove();
-              yAxisValue.current = null;
-            }
-
-            const formattedValue = Math.round(val * 10e9) / 10e9;
-            yAxisValue.current = visArea
-              .append('div')
-              .attr('class', 'ChartMouseValue yAxis')
-              .attr('title', formattedValue)
-              .style('max-width', `${visBox.current.margin.left - 5}px`)
-              .style(
-                'right',
-                `${visBox.current.width - visBox.current.margin.left - 2}px`,
-              )
-              .style('top', `${lineY + visBox.current.margin.top}px`)
-              .text(formattedValue);
-          }
-
-          const [xMin, xMax] = chartOptions.current.xScale.range();
-          const [yMax, yMin] = chartOptions.current.yScale.range();
-
-          let circle = null;
-          if (
-            x > xMin - circleActiveRadius &&
-            x < xMax + circleActiveRadius &&
-            y > yMin - circleActiveRadius &&
-            y < yMax + circleActiveRadius
-          ) {
-            circle = circles.current
-              .append('circle')
-              .attr(
-                'class',
-                `HoverCircle HoverCircle-${closestStep} ${
-                  shouldHighlightCircle ? '' : 'inactive'
-                } HoverCircle-${traceToHash(
-                  run.run_hash,
-                  metric?.name,
-                  traceContext,
-                )}`,
-              )
-              .attr('cx', x)
-              .attr('cy', y)
-              .attr('r', circleRadius)
-              .attr('data-x', x)
-              .attr('data-y', y)
-              .attr('data-step', closestStep)
-              .attr('data-run-hash', run.run_hash)
-              .attr('data-metric-name', metric?.name)
-              .attr('data-trace-context-hash', contextToHash(trace?.context))
-              .attr('clip-path', 'url(#circles-rect-clip-' + props.index + ')')
-              .style(
-                'fill',
-                traceList?.grouping?.color?.length > 0
-                  ? traceModel.color
-                  : getMetricColor(run, metric, trace, runIndex),
-              )
-              .on('click', function () {
-                handlePointClick(
-                  closestStep,
-                  run.run_hash,
-                  metric?.name,
-                  traceContext,
-                );
-              });
-          }
-
-          runIndex++;
-
-          if (
-            focusedCircle.active === true &&
-            focusedCircle.runHash === run.run_hash &&
-            focusedCircle.metricName === metric.name &&
-            focusedCircle.traceContext === traceContext &&
-            focusedCircle.step === step
-          ) {
-            focusedCircleElem = circle;
-          }
-        }
-      }),
-    );
+        const formattedValue = Math.round(val * 10e9) / 10e9;
+        yAxisValue.current = visArea
+          .append('div')
+          .attr('class', 'ChartMouseValue yAxis')
+          .attr('title', formattedValue)
+          .style('max-width', `${visBox.current.margin.left - 5}px`)
+          .style(
+            'right',
+            `${visBox.current.width - visBox.current.margin.left - 2}px`,
+          )
+          .style('top', `${lineY + visBox.current.margin.top}px`)
+          .text(formattedValue);
+      }
+    }
 
     // Apply focused state to line and circle
-    if (focusedMetric.runHash !== null) {
+    if (focusedLineAttr.runHash !== null) {
       plot.current.selectAll('.PlotArea.active').moveToFront();
       plot.current.selectAll('.PlotLine.current').moveToFront();
 
-      circles.current.selectAll('*.focus').moveToFront();
-      circles.current
-        .selectAll(
-          `.HoverCircle-${traceToHash(
-            focusedMetric.runHash,
-            focusedMetric.metricName,
-            focusedMetric.traceContext,
-          )}`,
-        )
-        .classed('active', true)
-        .attr('r', circleActiveRadius)
-        .moveToFront();
-    }
-
-    // Add focused circle and/or apply focused state
-    if (
-      focusedCircle.active === true &&
-      (contextFilter.groupByChart.length === 0 ||
-        traceList?.traces
-          .filter((trace) => trace.chart === props.index)
-          .some((traceModel) =>
-            traceModel.hasRun(
-              focusedCircle.runHash,
-              focusedCircle.metricName,
-              focusedCircle.traceContext,
-            ),
-          ))
-    ) {
-      if (focusedCircleElem !== null) {
-        focusedCircleElem
-          .classed('focus', true)
-          .classed('active', false)
-          .attr('r', circleActiveRadius)
-          .moveToFront();
-      } else {
-        const focusedCircleX = chartOptions.current.xScale(focusedCircle.step);
-        const line = getTraceData(
-          focusedCircle.runHash,
-          focusedCircle.metricName,
-          focusedCircle.traceContext,
-        );
-        if (line !== null) {
-          const focusedCircleVal =
-            line?.data?.[line?.axisValues?.indexOf(focusedCircle.step)]?.[0] ??
-            null;
-          if (focusedCircleVal !== null) {
-            const focusedCircleY = chartOptions.current.yScale(
-              focusedCircleVal,
-            );
-
-            circles.current
-              .append('circle')
-              .attr(
-                'class',
-                `HoverCircle HoverCircle-${focusedCircle.metricIndex} focus`,
-              )
-              .attr('cx', focusedCircleX)
-              .attr('cy', focusedCircleY)
-              .attr('r', circleActiveRadius)
-              .attr('data-x', focusedCircleX)
-              .attr('data-y', focusedCircleY)
-              .attr('data-step', focusedCircle.step)
-              .attr('data-run-hash', focusedCircle.runHash)
-              .attr('data-metric-name', focusedCircle.metricName)
-              .attr('data-trace-context-hash', focusedCircle.traceContext)
-              .attr('clip-path', 'url(#lines-rect-clip-' + props.index + ')')
-              .style('fill', getMetricColor(line.run, line.metric, line.trace))
-              .on('click', function () {
-                handlePointClick(
-                  focusedCircle.step,
-                  focusedCircle.runHash,
-                  focusedCircle.metricName,
-                  focusedCircle.traceContext,
-                );
-              })
-              .moveToFront();
-          }
-        }
-      }
+      attributes.current.selectAll('circle.active').moveToFront();
+      attributes.current.selectAll('circle.focus').moveToFront();
     }
   }
 
@@ -1865,11 +1784,11 @@ function PanelChart(props) {
         }
 
         // Find the nearest circle
-        if (circles.current) {
+        if (attributes.current) {
           // Circles
           let nearestCircle = [];
 
-          circles.current.selectAll('.HoverCircle').each(function () {
+          attributes.current.selectAll('.HoverCircle').each(function () {
             const elem = d3.select(this);
             const elemX = parseFloat(elem.attr('data-x'));
             const elemY = parseFloat(elem.attr('data-y'));
@@ -1974,23 +1893,14 @@ function PanelChart(props) {
         HubMainScreenModel.events.SET_TRACE_LIST,
         HubMainScreenModel.events.SET_CHART_SETTINGS_STATE,
         HubMainScreenModel.events.SET_CHART_FOCUSED_ACTIVE_STATE,
-        HubMainScreenModel.events.SET_CHART_HIDDEN_METRICS,
+        // HubMainScreenModel.events.SET_CHART_HIDDEN_METRICS,
       ],
       animatedRender,
     );
     const updateSubscription = HubMainScreenModel.subscribe(
       HubMainScreenModel.events.SET_CHART_FOCUSED_STATE,
       () => {
-        window.requestAnimationFrame(() => {
-          lines.current?.selectAll('path').remove();
-          attributes.current?.selectAll('g').remove();
-          attributes.current?.selectAll('line').remove();
-          if (yAxisValue.current) {
-            yAxisValue.current.remove();
-            yAxisValue.current = null;
-          }
-          drawData();
-        });
+        window.requestAnimationFrame(updateChart);
       },
     );
 

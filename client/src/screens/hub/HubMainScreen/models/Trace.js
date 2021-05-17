@@ -80,6 +80,9 @@ export default class Trace {
     } else if (aggregatedArea === 'std_err') {
       this.aggregation.stdErrMin = this.aggregateSeries();
       this.aggregation.stdErrMax = this.aggregateSeries();
+    } else if (aggregatedArea === 'conf_int') {
+      this.aggregation.confIntMin = this.aggregateSeries();
+      this.aggregation.confIntMax = this.aggregateSeries();
     }
   };
 

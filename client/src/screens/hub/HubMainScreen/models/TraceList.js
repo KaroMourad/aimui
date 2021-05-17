@@ -730,7 +730,11 @@ export default class TraceList {
           ]);
         }
 
-        if (aggregatedArea === 'std_dev' || aggregatedArea === 'std_err') {
+        if (
+          aggregatedArea === 'std_dev' ||
+          aggregatedArea === 'std_err' ||
+          aggregatedArea === 'conf_int'
+        ) {
           let setpValues = {};
           stepTicks.forEach((step) => {
             const avg = _.sum(valuesByStep[step]) / valuesByStep[step].length;
@@ -747,12 +751,20 @@ export default class TraceList {
                 min: avg - stdDevValue,
                 max: avg + stdDevValue,
               };
-            } else {
+            } else if (aggregatedArea === 'std_err') {
               const stdErrValue =
                 stdDevValue / Math.sqrt(valuesByStep[step].length);
               setpValues[step] = {
                 min: avg - stdErrValue,
                 max: avg + stdErrValue,
+              };
+            } else if (aggregatedArea === 'conf_int') {
+              const zValue = 1.96; // for 95% confidence level
+              const CI =
+                zValue * (stdDevValue / Math.sqrt(valuesByStep[step].length));
+              setpValues[step] = {
+                min: avg - CI,
+                max: avg + CI,
               };
             }
           });
@@ -764,11 +776,18 @@ export default class TraceList {
             traceModel.aggregation.stdDevMax.trace.data = stepTicks.map(
               (step) => [setpValues[step].max, +step],
             );
-          } else {
+          } else if (aggregatedArea === 'std_err') {
             traceModel.aggregation.stdErrMin.trace.data = stepTicks.map(
               (step) => [setpValues[step].min, +step],
             );
             traceModel.aggregation.stdErrMax.trace.data = stepTicks.map(
+              (step) => [setpValues[step].max, +step],
+            );
+          } else if (aggregatedArea === 'conf_int') {
+            traceModel.aggregation.confIntMin.trace.data = stepTicks.map(
+              (step) => [setpValues[step].min, +step],
+            );
+            traceModel.aggregation.confIntMax.trace.data = stepTicks.map(
               (step) => [setpValues[step].max, +step],
             );
           }
