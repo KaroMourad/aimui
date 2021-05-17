@@ -1464,14 +1464,18 @@ function PanelChart(props) {
           )
           .text(xAxisValueText);
 
-        const axisLeftEdge = visBox.current.width - visBox.current.margin.right;
+        const axisLeftEdge = visBox.current.margin.left - 1;
+        const axisRightEdge =
+          visBox.current.width - visBox.current.margin.right + 1;
         const xAxisValueWidth = xAxisValue.current.node().offsetWidth;
         xAxisValue.current.style(
           'left',
           `${
-            x + visBox.current.margin.left + xAxisValueWidth / 2 > axisLeftEdge
-              ? axisLeftEdge - xAxisValueWidth / 2
-              : x + visBox.current.margin.left
+            x - xAxisValueWidth / 2 < 0
+              ? axisLeftEdge + xAxisValueWidth / 2
+              : x + axisLeftEdge + xAxisValueWidth / 2 > axisRightEdge
+                ? axisRightEdge - xAxisValueWidth / 2
+                : x + axisLeftEdge
           }px`,
         );
       }
@@ -1580,8 +1584,22 @@ function PanelChart(props) {
             'right',
             `${visBox.current.width - visBox.current.margin.left - 2}px`,
           )
-          .style('top', `${lineY + visBox.current.margin.top}px`)
           .text(formattedValue);
+
+        const axisTopEdge = visBox.current.margin.top - 1;
+        const axisBottomEdge =
+          visBox.current.height - visBox.current.margin.top;
+        const yAxisValueHeight = yAxisValue.current.node().offsetHeight;
+        yAxisValue.current.style(
+          'top',
+          `${
+            lineY - yAxisValueHeight / 2 < 0
+              ? axisTopEdge + yAxisValueHeight / 2
+              : lineY + axisTopEdge + yAxisValueHeight / 2 > axisBottomEdge
+                ? axisBottomEdge - yAxisValueHeight / 2
+                : lineY + axisTopEdge
+          }px`,
+        );
       }
     }
 
