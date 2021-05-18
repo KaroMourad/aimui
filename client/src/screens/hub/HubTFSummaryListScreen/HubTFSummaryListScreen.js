@@ -67,34 +67,33 @@ class HubTFSummaryListScreen extends Component {
   };
 
   appendPathToTree = (tree, path) => {
-    let depthSubset = tree;
-    let lastItem = null;
-    for (let dirNameIdx in path) {
-      let treeIndex = -1;
-      for (let treeItem in depthSubset) {
-        if (depthSubset[treeItem].path === path[dirNameIdx]) {
-          treeIndex = treeItem;
+    let treeSubset = tree;
+
+    for (let pathItemIdx in path) {
+      let firstTreeItemMatchIdx = -1;
+      for (let treeSubsetItemIdx in treeSubset) {
+        if (treeSubset[treeSubsetItemIdx].path === path[pathItemIdx]) {
+          firstTreeItemMatchIdx = treeSubsetItemIdx;
           break;
         }
       }
-      if (treeIndex === -1) {
+
+      if (firstTreeItemMatchIdx === -1) {
         const nodeOptions = {
-          path: path[dirNameIdx],
+          path: path[pathItemIdx],
           children: [],
         };
 
-        if (parseInt(dirNameIdx) === path.length - 1) {
+        if (parseInt(pathItemIdx) === path.length - 1) {
           nodeOptions.fullPath = path;
           nodeOptions.showActions = true;
           nodeOptions.showForm = false;
         }
 
-        depthSubset.push(nodeOptions);
-
-        lastItem = depthSubset[depthSubset.length - 1];
-        depthSubset = lastItem.children;
+        treeSubset.push(nodeOptions);
+        treeSubset = treeSubset[treeSubset.length - 1].children;
       } else {
-        depthSubset = tree[treeIndex].children;
+        treeSubset = treeSubset[firstTreeItemMatchIdx].children;
       }
     }
   };
