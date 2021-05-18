@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.6.1 May 18 2021
+- Fix issue with axes scale options missing in URL (roubkar)
+
 ## 1.6.0 May 13 2021
 - Add confidence interval aggregation mode (roubkar)
 - Display group config inside chart popover (roubkar)

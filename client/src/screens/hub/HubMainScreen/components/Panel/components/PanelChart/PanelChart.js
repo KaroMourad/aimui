@@ -534,8 +534,8 @@ function PanelChart(props) {
           yMin: chartOptions.current.yScale.domain()[0],
           yMax: chartOptions.current.yScale.domain()[1],
           scale: {
-            xScale: chart.settings.persistent.xScale,
-            yScale: chart.settings.persistent.yScale,
+            xScale: chart.settings.persistent.xScale ?? 0,
+            yScale: chart.settings.persistent.yScale ?? 0,
           },
         });
 
@@ -1137,8 +1137,8 @@ function PanelChart(props) {
           yMin: chartOptions.current.yScale.domain()[0],
           yMax: chartOptions.current.yScale.domain()[1],
           scale: {
-            xScale: chart.settings.persistent.xScale,
-            yScale: chart.settings.persistent.yScale,
+            xScale: chart.settings.persistent.xScale ?? 0,
+            yScale: chart.settings.persistent.yScale ?? 0,
           },
         });
 
@@ -1150,8 +1150,8 @@ function PanelChart(props) {
           yMin: chartOptions.current.yScale.domain()[0],
           yMax: chartOptions.current.yScale.domain()[1],
           scale: {
-            xScale: chart.settings.persistent.xScale,
-            yScale: chart.settings.persistent.yScale,
+            xScale: chart.settings.persistent.xScale ?? 0,
+            yScale: chart.settings.persistent.yScale ?? 0,
           },
         });
 
@@ -1217,8 +1217,8 @@ function PanelChart(props) {
           yMin: chartOptions.current.yScale.domain()[0],
           yMax: chartOptions.current.yScale.domain()[1],
           scale: {
-            xScale: chart.settings.persistent.xScale,
-            yScale: chart.settings.persistent.yScale,
+            xScale: chart.settings.persistent.xScale ?? 0,
+            yScale: chart.settings.persistent.yScale ?? 0,
           },
         });
         const aggLineFunc = d3
@@ -1319,8 +1319,8 @@ function PanelChart(props) {
               yMin: chartOptions.current.yScale.domain()[0],
               yMax: chartOptions.current.yScale.domain()[1],
               scale: {
-                xScale: chart.settings.persistent.xScale,
-                yScale: chart.settings.persistent.yScale,
+                xScale: chart.settings.persistent.xScale ?? 0,
+                yScale: chart.settings.persistent.yScale ?? 0,
               },
             });
             const focusedLine = d3
