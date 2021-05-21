@@ -3,6 +3,7 @@ import './HubMainScreen.less';
 import React, { useState, useEffect, useRef, Fragment } from 'react';
 import { Helmet } from 'react-helmet';
 import { withRouter } from 'react-router-dom';
+import * as _ from 'lodash';
 
 import ProjectWrapper from '../../../wrappers/hub/ProjectWrapper/ProjectWrapper';
 import * as classes from '../../../constants/classes';
@@ -127,6 +128,26 @@ function HubMainScreen(props) {
     });
   }
 
+  function getCurrentState() {
+    const { chart, search, contextFilter } = HubMainScreenModel.getState();
+
+    return {
+      chart: {
+        settings: {
+          persistent: chart.settings?.persistent,
+        },
+        focused: {
+          circle: chart.focused?.circle,
+        },
+      },
+      search: {
+        query: search?.query,
+        v: search?.v,
+      },
+      contextFilter: contextFilter,
+    };
+  }
+
   function stateToURL(state) {
     const encodedState = btoa(JSON.stringify(state));
     const URL = buildUrl(screens.EXPLORE_SEARCH, {
@@ -139,7 +160,9 @@ function HubMainScreen(props) {
     if (search.indexOf('?search=') !== -1) {
       try {
         const encodedState = search.substr(8);
-        return JSON.parse(atob(encodedState));
+        let state = JSON.parse(atob(encodedState));
+        let currentState = getCurrentState();
+        return _.merge({}, currentState, state);
       } catch (e) {
         console.log(e);
         return null;
@@ -225,23 +248,7 @@ function HubMainScreen(props) {
       return;
     }
 
-    const { chart, search, contextFilter } = HubMainScreenModel.getState();
-
-    const state = {
-      chart: {
-        settings: {
-          persistent: chart.settings?.persistent,
-        },
-        focused: {
-          circle: chart.focused?.circle,
-        },
-      },
-      search: {
-        query: search?.query,
-        v: search?.v,
-      },
-      contextFilter: contextFilter,
-    };
+    const state = getCurrentState();
 
     const URL = stateToURL(state);
     setItem(USER_LAST_EXPLORE_CONFIG, URL);
@@ -362,7 +369,6 @@ function HubMainScreen(props) {
 
     const subscription = HubMainScreenModel.subscribe(
       [
-        HubMainScreenModel.events.SET_CHART_FOCUSED_STATE,
         HubMainScreenModel.events.SET_CHART_FOCUSED_ACTIVE_STATE,
         HubMainScreenModel.events.SET_CHART_SETTINGS_STATE,
         HubMainScreenModel.events.SET_CHART_POINTS_COUNT,
