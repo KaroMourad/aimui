@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Optimize context table update performance (roubkar)
 - Add ability to zoom-in over plot elements (roubkar)
 
 ## 1.6.1 May 18 2021

@@ -29,6 +29,9 @@ function ContextTable(props) {
     storageVal = {};
   }
 
+  let contextTableContainerRef = useRef();
+  let contextTableRef = useRef();
+
   let [excludedFields, setExcludedFields] = useState(
     storageVal?.excludedFields ?? [],
   );
@@ -84,9 +87,8 @@ function ContextTable(props) {
     setColumnsWidth(columnsWidthClone);
   }
 
-  let contextTableRef = useRef();
-
-  const height = contextTableRef.current?.getBoundingClientRect()?.height;
+  const height = contextTableContainerRef.current?.getBoundingClientRect()
+    ?.height;
   const itemMaxHeight = !!height ? height - 50 : null;
 
   useEffect(() => {
@@ -187,6 +189,12 @@ function ContextTable(props) {
     setColumnsOrder(order);
   }, [props.columns]);
 
+  useEffect(() => {
+    if (typeof props.getTableContainerElement === 'function') {
+      props.getTableContainerElement(contextTableRef.current);
+    }
+  }, []);
+
   return (
     <div
       className={classNames({
@@ -194,7 +202,7 @@ function ContextTable(props) {
         'ContextTable--displayBar': true,
         [`ContextTable--${rowHeightMode}`]: true,
       })}
-      ref={contextTableRef}
+      ref={contextTableContainerRef}
     >
       {props.displayBar && (
         <div
@@ -246,7 +254,13 @@ function ContextTable(props) {
           <div className='ContextTableBar__items ContextTableBar__items--right' />
         </div>
       )}
-      <div className='ContextTable__table'>
+      <div
+        className={classNames({
+          ContextTable__table: true,
+          [rowHeightMode]: true,
+        })}
+        ref={contextTableRef}
+      >
         <UI.Table
           excludedFields={excludedFields}
           setExcludedFields={setExcludedFields}
@@ -289,6 +303,7 @@ ContextTable.propTypes = {
   hiddenMetrics: PropTypes.array,
   setHiddenMetrics: PropTypes.func,
   getParamsWithSameValue: PropTypes.func,
+  getTableContainerElement: PropTypes.func,
 };
 
 export default ContextTable;

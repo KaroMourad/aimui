@@ -30,6 +30,13 @@ function ContextBox(props) {
     params: {},
   });
   let paramKeys = useRef();
+  let tableElemRef = useRef();
+  let tableWindowOptions = useRef({
+    startIndex: 0,
+    endIndex: 100,
+  });
+  let tableResizeObserver = useRef();
+  let tableContainerResizeObserver = useRef();
 
   let {
     runs,
@@ -66,6 +73,78 @@ function ContextBox(props) {
     getAllMetrics,
   } = HubMainScreenModel.helpers;
 
+  function shortenConfigKeys(config) {
+    const newConfig = {};
+    for (let key in config) {
+      newConfig[key.startsWith('params.') ? key.substring(7) : key] =
+        config[key];
+    }
+
+    return newConfig;
+  }
+
+  function calculateWindowOptions(elem) {
+    let windowHeight = elem.offsetHeight;
+    let scrollTop = elem.scrollTop;
+
+    let valueColumn = elem.querySelectorAll('.Table__cell.valueColumn');
+    let start = null;
+    let end = null;
+    let startIsSet = false;
+    let endIsSet = false;
+
+    if (valueColumn.length === 0) {
+      start = 0;
+      end = 0;
+      startIsSet = true;
+      endIsSet = true;
+    } else {
+      valueColumn.forEach((valueCell) => {
+        let cellTop = valueCell.offsetTop;
+        let rowIndex = +valueCell.className
+          .match(/rowIndex-\d*/)[0]
+          .replace('rowIndex-', '');
+        if (cellTop > scrollTop - 30 && !startIsSet) {
+          start = rowIndex;
+          startIsSet = true;
+        }
+        if (cellTop < scrollTop + windowHeight) {
+          end = rowIndex + 1;
+          endIsSet = true;
+        }
+      });
+    }
+    if (!startIsSet) {
+      start = 0;
+    }
+    if (!endIsSet) {
+      end = 0;
+    }
+    tableWindowOptions.current = {
+      startIndex: start,
+      endIndex: end,
+    };
+  }
+
+  function virtualizedUpdate() {
+    calculateWindowOptions(tableElemRef.current);
+    window.requestAnimationFrame(updateDynamicColumns);
+  }
+
+  function getTableContainerElement(elem) {
+    tableElemRef.current = elem;
+    calculateWindowOptions(elem);
+
+    tableElemRef.current.addEventListener('scroll', virtualizedUpdate);
+
+    tableResizeObserver.current = new ResizeObserver(virtualizedUpdate);
+    tableContainerResizeObserver.current = new ResizeObserver(
+      virtualizedUpdate,
+    );
+
+    tableContainerResizeObserver.current.observe(elem.querySelector('.Table'));
+  }
+
   function handleRowMove(runHash, metricName, traceContext) {
     const focusedCircle = HubMainScreenModel.getState().chart.focused.circle;
     const focusedMetric = HubMainScreenModel.getState().chart.focused.metric;
@@ -89,16 +168,6 @@ function ContextBox(props) {
         traceContext,
       },
     });
-  }
-
-  function shortenConfigKeys(config) {
-    const newConfig = {};
-    for (let key in config) {
-      newConfig[key.startsWith('params.') ? key.substring(7) : key] =
-        config[key];
-    }
-
-    return newConfig;
   }
 
   function handleRowClick(runHash, metricName, traceContext) {
@@ -543,6 +612,7 @@ function ContextBox(props) {
           ContextBox__table__cell: true,
           active: active,
           metricIsHidden: run.metricIsHidden,
+          [`rowIndex-${runIndex - 1}`]: true,
           [`cell-${traceToHash(
             run.run_hash,
             isExploreParamsModeEnabled() ? null : metric?.name,
@@ -671,7 +741,7 @@ function ContextBox(props) {
               stepData !== null && stepData[0] !== null
                 ? roundValue(stepData[0])
                 : '-',
-            className: `value-${traceToHash(
+            className: `valueColumn value-${traceToHash(
               run.run_hash,
               metric?.name,
               contextHash,
@@ -1202,10 +1272,297 @@ function ContextBox(props) {
               'epoch',
               'time',
             ]}
+            getTableContainerElement={getTableContainerElement}
           />
         </div>
       </div>
     );
+  }
+
+  function updateDynamicColumns() {
+    const { traceList, chart, contextFilter } = HubMainScreenModel.getState();
+    const { startIndex, endIndex } = tableWindowOptions.current;
+
+    const step = chart.focused.step;
+    const focusedCircle = chart.focused.circle;
+    const focusedMetric = chart.focused.metric;
+
+    let groupStepData = {};
+    let groupEpochData = {};
+
+    const currentActiveRow = document.querySelectorAll(
+      '.ContextBox__table__cell.active',
+    );
+    currentActiveRow?.forEach((cell) => {
+      cell.classList.remove('active');
+    });
+    let runIndex = 0;
+    traceList?.traces.forEach((traceModel, traceModelIndex) => {
+      const groupSelector = getCSSSelectorFromString(
+        `${JSON.stringify(traceModel.config)}_${traceModelIndex}`,
+      );
+      (isExploreParamsModeEnabled()
+        ? _.uniqBy(traceModel.series, 'run.run_hash')
+        : traceModel.series
+      ).forEach((series) => {
+        if (runIndex < startIndex || runIndex > endIndex) {
+          runIndex++;
+          return;
+        }
+
+        const { run, metric, trace } = series;
+        const contextHash = contextToHash(trace?.context);
+
+        const line = getTraceData(run.run_hash, metric?.name, contextHash);
+
+        let { stepData } = getClosestStepData(
+          step,
+          line?.data,
+          line?.axisValues,
+        );
+
+        if (stepData !== null && stepData[1] !== null) {
+          if (!groupStepData.hasOwnProperty(groupSelector)) {
+            groupStepData[groupSelector] = stepData[1];
+            groupEpochData[groupSelector] = stepData[2];
+          } else {
+            if (groupStepData[groupSelector] !== stepData[1]) {
+              groupStepData[groupSelector] = undefined;
+              groupEpochData[groupSelector] = undefined;
+            }
+          }
+        }
+
+        let active = false;
+
+        if (
+          (isExploreParamsModeEnabled() &&
+            (focusedCircle.runHash === run.run_hash ||
+              focusedMetric.runHash === run.run_hash)) ||
+          (focusedCircle.runHash === run.run_hash &&
+            focusedCircle.metricName === metric?.name &&
+            focusedCircle.traceContext === contextHash) ||
+          (focusedMetric.runHash === run.run_hash &&
+            focusedMetric.metricName === metric?.name &&
+            focusedMetric.traceContext === contextHash)
+        ) {
+          active = true;
+        }
+
+        if (active) {
+          const activeRow = document.querySelectorAll(
+            `.cell-${traceToHash(
+              run.run_hash,
+              isExploreParamsModeEnabled() ? null : metric?.name,
+              isExploreParamsModeEnabled() ? null : contextHash,
+            )}`,
+          );
+          activeRow.forEach((cell) => {
+            cell.classList.add('active');
+          });
+        }
+
+        runIndex++;
+
+        if (isExploreMetricsModeEnabled()) {
+          const valueCell = document.querySelector(
+            `.value-${traceToHash(
+              run.run_hash,
+              metric?.name,
+              contextHash,
+            )} .Table__cell__value`,
+          );
+          if (!!valueCell) {
+            valueCell.textContent =
+              stepData !== null && stepData[0] !== null
+                ? roundValue(stepData[0])
+                : '-';
+          }
+          const stepCell = document.querySelector(
+            `.step-${traceToHash(
+              run.run_hash,
+              metric?.name,
+              contextHash,
+            )} .Table__cell__value`,
+          );
+          if (!!stepCell) {
+            stepCell.textContent =
+              stepData !== null && stepData[1] !== null ? stepData[1] : '-';
+          }
+
+          const epochCell = document.querySelector(
+            `.epoch-${traceToHash(
+              run.run_hash,
+              metric?.name,
+              contextHash,
+            )} .Table__cell__value`,
+          );
+          if (!!epochCell) {
+            epochCell.textContent =
+              stepData !== null && stepData[2] !== null ? stepData[2] : '-';
+          }
+
+          const timeCell = document.querySelector(
+            `.time-${traceToHash(
+              run.run_hash,
+              metric?.name,
+              contextHash,
+            )} .Table__cell__value`,
+          );
+          if (!!timeCell) {
+            timeCell.textContent =
+              stepData !== null && stepData[3] !== null
+                ? moment.unix(stepData[3]).format('HH:mm:ss · D MMM, YY')
+                : '-';
+          }
+        }
+      });
+
+      if (isExploreMetricsModeEnabled() && traceList?.traces.length > 1) {
+        const groupSetpCell = document.querySelector(`.step-${groupSelector}`);
+        const groupEpochCell = document.querySelector(
+          `.epoch-${groupSelector}`,
+        );
+        if (!!groupSetpCell) {
+          groupSetpCell.textContent = groupStepData[groupSelector] ?? '-';
+        }
+        if (!!groupEpochCell) {
+          groupEpochCell.textContent = groupEpochData[groupSelector] ?? '-';
+        }
+
+        const aggregatedArea = contextFilter.aggregatedArea;
+        const aggregatedLine = contextFilter.aggregatedLine;
+
+        const groupValueCellMin = document.querySelector(
+          `.value-${groupSelector} .min`,
+        );
+        if (!!groupValueCellMin) {
+          switch (aggregatedArea) {
+            case 'std_dev':
+              const stdDevMin = getMetricStepDataByStepIdx(
+                traceModel.aggregation.stdDevMin?.trace.data,
+                step,
+              )?.[0];
+              groupValueCellMin.textContent =
+                stdDevMin !== null && stdDevMin !== undefined
+                  ? roundValue(stdDevMin)
+                  : '-';
+              break;
+            case 'std_err':
+              const stdErrMin = getMetricStepDataByStepIdx(
+                traceModel.aggregation.stdErrMin?.trace.data,
+                step,
+              )?.[0];
+              groupValueCellMin.textContent =
+                stdErrMin !== null && stdErrMin !== undefined
+                  ? roundValue(stdErrMin)
+                  : '-';
+              break;
+            case 'conf_int':
+              const confIntMin = getMetricStepDataByStepIdx(
+                traceModel.aggregation.confIntMin?.trace.data,
+                step,
+              )?.[0];
+              groupValueCellMin.textContent =
+                confIntMin !== null && confIntMin !== undefined
+                  ? roundValue(confIntMin)
+                  : '-';
+              break;
+            default:
+              const min = getMetricStepDataByStepIdx(
+                traceModel.aggregation.min?.trace.data,
+                step,
+              )?.[0];
+              groupValueCellMin.textContent =
+                min !== null && min !== undefined ? roundValue(min) : '-';
+          }
+        }
+
+        const groupValueCellMax = document.querySelector(
+          `.value-${groupSelector} .max`,
+        );
+        if (!!groupValueCellMax) {
+          switch (aggregatedArea) {
+            case 'std_dev':
+              const stdDevMax = getMetricStepDataByStepIdx(
+                traceModel.aggregation.stdDevMax?.trace.data,
+                step,
+              )?.[0];
+              groupValueCellMax.textContent =
+                stdDevMax !== null && stdDevMax !== undefined
+                  ? roundValue(stdDevMax)
+                  : '-';
+              break;
+            case 'std_err':
+              const stdErrMax = getMetricStepDataByStepIdx(
+                traceModel.aggregation.stdErrMax?.trace.data,
+                step,
+              )?.[0];
+              groupValueCellMax.textContent =
+                stdErrMax !== null && stdErrMax !== undefined
+                  ? roundValue(stdErrMax)
+                  : '-';
+              break;
+            case 'conf_int':
+              const confIntMax = getMetricStepDataByStepIdx(
+                traceModel.aggregation.confIntMax?.trace.data,
+                step,
+              )?.[0];
+              groupValueCellMax.textContent =
+                confIntMax !== null && confIntMax !== undefined
+                  ? roundValue(confIntMax)
+                  : '-';
+              break;
+            default:
+              const max = getMetricStepDataByStepIdx(
+                traceModel.aggregation.max?.trace.data,
+                step,
+              )?.[0];
+              groupValueCellMax.textContent =
+                max !== null && max !== undefined ? roundValue(max) : '-';
+          }
+        }
+        const groupValueCellAggLine = document.querySelector(
+          `.value-${groupSelector} .aggLine .Label__content`,
+        );
+        if (!!groupValueCellAggLine) {
+          switch (aggregatedLine) {
+            case 'avg':
+              const avg = getMetricStepDataByStepIdx(
+                traceModel.aggregation.avg?.trace.data,
+                step,
+              )?.[0];
+              groupValueCellAggLine.textContent =
+                avg !== null && avg !== undefined ? roundValue(avg) : '-';
+              break;
+            case 'median':
+              const med = getMetricStepDataByStepIdx(
+                traceModel.aggregation.med?.trace.data,
+                step,
+              )?.[0];
+              groupValueCellAggLine.textContent =
+                med !== null && med !== undefined ? roundValue(med) : '-';
+              break;
+            case 'min':
+              const min = getMetricStepDataByStepIdx(
+                traceModel.aggregation.min?.trace.data,
+                step,
+              )?.[0];
+              groupValueCellAggLine.textContent =
+                min !== null && min !== undefined ? roundValue(min) : '-';
+              break;
+            case 'max':
+              const max = getMetricStepDataByStepIdx(
+                traceModel.aggregation.max?.trace.data,
+                step,
+              )?.[0];
+              groupValueCellAggLine.textContent =
+                max !== null && max !== undefined ? roundValue(max) : '-';
+              break;
+          }
+        }
+      }
+    });
   }
 
   useEffect(() => {
@@ -1230,323 +1587,15 @@ function ContextBox(props) {
     const focusedStateChangeSubscription = HubMainScreenModel.subscribe(
       HubMainScreenModel.events.SET_CHART_FOCUSED_STATE,
       () => {
-        window.requestAnimationFrame(() => {
-          const {
-            traceList,
-            chart,
-            contextFilter,
-          } = HubMainScreenModel.getState();
-
-          const step = chart.focused.step;
-          const focusedCircle = chart.focused.circle;
-          const focusedMetric = chart.focused.metric;
-
-          let groupStepData = {};
-          let groupEpochData = {};
-
-          const currentActiveRow = document.querySelectorAll(
-            '.ContextBox__table__cell.active',
-          );
-          currentActiveRow?.forEach((cell) => {
-            cell.classList.remove('active');
-          });
-          let runIndex = 0;
-          traceList?.traces.forEach((traceModel, traceModelIndex) => {
-            const groupSelector = getCSSSelectorFromString(
-              `${JSON.stringify(traceModel.config)}_${traceModelIndex}`,
-            );
-            (isExploreParamsModeEnabled()
-              ? _.uniqBy(traceModel.series, 'run.run_hash')
-              : traceModel.series
-            ).forEach((series) => {
-              const { run, metric, trace } = series;
-              const contextHash = contextToHash(trace?.context);
-
-              const line = getTraceData(
-                run.run_hash,
-                metric?.name,
-                contextHash,
-              );
-
-              let { stepData } = getClosestStepData(
-                step,
-                line?.data,
-                line?.axisValues,
-              );
-
-              if (stepData !== null && stepData[1] !== null) {
-                if (!groupStepData.hasOwnProperty(groupSelector)) {
-                  groupStepData[groupSelector] = stepData[1];
-                  groupEpochData[groupSelector] = stepData[2];
-                } else {
-                  if (groupStepData[groupSelector] !== stepData[1]) {
-                    groupStepData[groupSelector] = undefined;
-                    groupEpochData[groupSelector] = undefined;
-                  }
-                }
-              }
-
-              let active = false;
-
-              if (
-                (isExploreParamsModeEnabled() &&
-                  (focusedCircle.runHash === run.run_hash ||
-                    focusedMetric.runHash === run.run_hash)) ||
-                (focusedCircle.runHash === run.run_hash &&
-                  focusedCircle.metricName === metric?.name &&
-                  focusedCircle.traceContext === contextHash) ||
-                (focusedMetric.runHash === run.run_hash &&
-                  focusedMetric.metricName === metric?.name &&
-                  focusedMetric.traceContext === contextHash)
-              ) {
-                active = true;
-              }
-
-              if (active) {
-                const color =
-                  traceList?.grouping?.color?.length > 0
-                    ? traceModel.color
-                    : getMetricColor(
-                      run,
-                      isExploreParamsModeEnabled() ? null : line?.metric,
-                      isExploreParamsModeEnabled() ? null : line?.trace,
-                      runIndex,
-                    );
-                const colorObj = Color(color);
-
-                const activeRow = document.querySelectorAll(
-                  `.cell-${traceToHash(
-                    run.run_hash,
-                    isExploreParamsModeEnabled() ? null : metric?.name,
-                    isExploreParamsModeEnabled() ? null : contextHash,
-                  )}`,
-                );
-                activeRow.forEach((cell) => {
-                  cell.classList.add('active');
-                  // cell.style.backgroundColor = colorObj
-                  //   .alpha(0.2)
-                  //   .hsl()
-                  //   .string();
-                  // cell.style.color = cell.classList.contains('metric')
-                  //   ? color
-                  //   : '';
-                });
-              }
-
-              runIndex++;
-
-              if (isExploreMetricsModeEnabled()) {
-                const valueCell = document.querySelector(
-                  `.value-${traceToHash(
-                    run.run_hash,
-                    metric?.name,
-                    contextHash,
-                  )} .Table__cell__value`,
-                );
-                if (!!valueCell) {
-                  valueCell.textContent =
-                    stepData !== null && stepData[0] !== null
-                      ? roundValue(stepData[0])
-                      : '-';
-                }
-                const stepCell = document.querySelector(
-                  `.step-${traceToHash(
-                    run.run_hash,
-                    metric?.name,
-                    contextHash,
-                  )} .Table__cell__value`,
-                );
-                if (!!stepCell) {
-                  stepCell.textContent =
-                    stepData !== null && stepData[1] !== null
-                      ? stepData[1]
-                      : '-';
-                }
-
-                const epochCell = document.querySelector(
-                  `.epoch-${traceToHash(
-                    run.run_hash,
-                    metric?.name,
-                    contextHash,
-                  )} .Table__cell__value`,
-                );
-                if (!!epochCell) {
-                  epochCell.textContent =
-                    stepData !== null && stepData[2] !== null
-                      ? stepData[2]
-                      : '-';
-                }
-
-                const timeCell = document.querySelector(
-                  `.time-${traceToHash(
-                    run.run_hash,
-                    metric?.name,
-                    contextHash,
-                  )} .Table__cell__value`,
-                );
-                if (!!timeCell) {
-                  timeCell.textContent =
-                    stepData !== null && stepData[3] !== null
-                      ? moment.unix(stepData[3]).format('HH:mm:ss · D MMM, YY')
-                      : '-';
-                }
-              }
-            });
-
-            if (isExploreMetricsModeEnabled() && traceList?.traces.length > 1) {
-              const groupSetpCell = document.querySelector(
-                `.step-${groupSelector}`,
-              );
-              const groupEpochCell = document.querySelector(
-                `.epoch-${groupSelector}`,
-              );
-              if (!!groupSetpCell) {
-                groupSetpCell.textContent = groupStepData[groupSelector] ?? '-';
-              }
-              if (!!groupEpochCell) {
-                groupEpochCell.textContent =
-                  groupEpochData[groupSelector] ?? '-';
-              }
-
-              const aggregatedArea = contextFilter.aggregatedArea;
-              const aggregatedLine = contextFilter.aggregatedLine;
-
-              const groupValueCellMin = document.querySelector(
-                `.value-${groupSelector} .min`,
-              );
-              if (!!groupValueCellMin) {
-                switch (aggregatedArea) {
-                  case 'std_dev':
-                    const stdDevMin = getMetricStepDataByStepIdx(
-                      traceModel.aggregation.stdDevMin?.trace.data,
-                      step,
-                    )?.[0];
-                    groupValueCellMin.textContent =
-                      stdDevMin !== null && stdDevMin !== undefined
-                        ? roundValue(stdDevMin)
-                        : '-';
-                    break;
-                  case 'std_err':
-                    const stdErrMin = getMetricStepDataByStepIdx(
-                      traceModel.aggregation.stdErrMin?.trace.data,
-                      step,
-                    )?.[0];
-                    groupValueCellMin.textContent =
-                      stdErrMin !== null && stdErrMin !== undefined
-                        ? roundValue(stdErrMin)
-                        : '-';
-                    break;
-                  case 'conf_int':
-                    const confIntMin = getMetricStepDataByStepIdx(
-                      traceModel.aggregation.confIntMin?.trace.data,
-                      step,
-                    )?.[0];
-                    groupValueCellMin.textContent =
-                      confIntMin !== null && confIntMin !== undefined
-                        ? roundValue(confIntMin)
-                        : '-';
-                    break;
-                  default:
-                    const min = getMetricStepDataByStepIdx(
-                      traceModel.aggregation.min?.trace.data,
-                      step,
-                    )?.[0];
-                    groupValueCellMin.textContent =
-                      min !== null && min !== undefined ? roundValue(min) : '-';
-                }
-              }
-
-              const groupValueCellMax = document.querySelector(
-                `.value-${groupSelector} .max`,
-              );
-              if (!!groupValueCellMax) {
-                switch (aggregatedArea) {
-                  case 'std_dev':
-                    const stdDevMax = getMetricStepDataByStepIdx(
-                      traceModel.aggregation.stdDevMax?.trace.data,
-                      step,
-                    )?.[0];
-                    groupValueCellMax.textContent =
-                      stdDevMax !== null && stdDevMax !== undefined
-                        ? roundValue(stdDevMax)
-                        : '-';
-                    break;
-                  case 'std_err':
-                    const stdErrMax = getMetricStepDataByStepIdx(
-                      traceModel.aggregation.stdErrMax?.trace.data,
-                      step,
-                    )?.[0];
-                    groupValueCellMax.textContent =
-                      stdErrMax !== null && stdErrMax !== undefined
-                        ? roundValue(stdErrMax)
-                        : '-';
-                    break;
-                  case 'conf_int':
-                    const confIntMax = getMetricStepDataByStepIdx(
-                      traceModel.aggregation.confIntMax?.trace.data,
-                      step,
-                    )?.[0];
-                    groupValueCellMax.textContent =
-                      confIntMax !== null && confIntMax !== undefined
-                        ? roundValue(confIntMax)
-                        : '-';
-                    break;
-                  default:
-                    const max = getMetricStepDataByStepIdx(
-                      traceModel.aggregation.max?.trace.data,
-                      step,
-                    )?.[0];
-                    groupValueCellMax.textContent =
-                      max !== null && max !== undefined ? roundValue(max) : '-';
-                }
-              }
-              const groupValueCellAggLine = document.querySelector(
-                `.value-${groupSelector} .aggLine .Label__content`,
-              );
-              if (!!groupValueCellAggLine) {
-                switch (aggregatedLine) {
-                  case 'avg':
-                    const avg = getMetricStepDataByStepIdx(
-                      traceModel.aggregation.avg?.trace.data,
-                      step,
-                    )?.[0];
-                    groupValueCellAggLine.textContent =
-                      avg !== null && avg !== undefined ? roundValue(avg) : '-';
-                    break;
-                  case 'median':
-                    const med = getMetricStepDataByStepIdx(
-                      traceModel.aggregation.med?.trace.data,
-                      step,
-                    )?.[0];
-                    groupValueCellAggLine.textContent =
-                      med !== null && med !== undefined ? roundValue(med) : '-';
-                    break;
-                  case 'min':
-                    const min = getMetricStepDataByStepIdx(
-                      traceModel.aggregation.min?.trace.data,
-                      step,
-                    )?.[0];
-                    groupValueCellAggLine.textContent =
-                      min !== null && min !== undefined ? roundValue(min) : '-';
-                    break;
-                  case 'max':
-                    const max = getMetricStepDataByStepIdx(
-                      traceModel.aggregation.max?.trace.data,
-                      step,
-                    )?.[0];
-                    groupValueCellAggLine.textContent =
-                      max !== null && max !== undefined ? roundValue(max) : '-';
-                    break;
-                }
-              }
-            }
-          });
-        });
+        window.requestAnimationFrame(updateDynamicColumns);
       },
     );
 
     return () => {
       focusedStateChangeSubscription.unsubscribe();
+      tableElemRef.current?.removeEventListener('scroll', virtualizedUpdate);
+      tableResizeObserver.current?.disconnect();
+      tableContainerResizeObserver.current?.disconnect();
     };
   }, []);
 
