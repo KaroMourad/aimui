@@ -10,6 +10,7 @@ import * as screens from '../../../constants/screens';
 import ProjectWrapper from '../../../wrappers/hub/ProjectWrapper/ProjectWrapper';
 import * as storeUtils from '../../../storeUtils';
 import { Link } from 'react-router-dom';
+import * as analytics from '../../../services/analytics';
 
 class HubTagCreateScreen extends React.Component {
   constructor(props) {
@@ -24,6 +25,10 @@ class HubTagCreateScreen extends React.Component {
     };
 
     this.form = React.createRef();
+  }
+
+  componentDidMount() {
+    analytics.pageView('Tag create');
   }
 
   handleCreateClick = () => {
@@ -43,6 +48,7 @@ class HubTagCreateScreen extends React.Component {
           ...prevState,
           shouldRedirect: true,
         }));
+        analytics.trackEvent('[Tags] Create a tag');
       })
       .catch((err) => {})
       .finally(() => {

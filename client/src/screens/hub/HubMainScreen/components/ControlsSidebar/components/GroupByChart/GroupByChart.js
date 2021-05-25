@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import UI from '../../../../../../../ui';
 import PropTypes from 'prop-types';
+
+import * as analytics from '../../../../../../../services/analytics';
+import UI from '../../../../../../../ui';
 import { classNames } from '../../../../../../../utils';
 import { getGroupingOptions } from '../../helpers';
 import { HubMainScreenModel } from '../../../../models/HubMainScreenModel';
@@ -113,6 +115,7 @@ function GroupByChart(props) {
                   null,
                   true,
                 );
+                analytics.trackEvent('[Explore] Divide into charts');
               }}
               isOpen
               multi
@@ -124,7 +127,7 @@ function GroupByChart(props) {
                 </UI.Text>
                 <div
                   className='ControlsSidebar__item__popup__body__groupAgainst__switch'
-                  onClick={() =>
+                  onClick={() => {
                     setContextFilter({
                       groupByChart: [],
                       groupAgainst: {
@@ -132,8 +135,13 @@ function GroupByChart(props) {
                           .groupAgainst,
                         chart: !against,
                       },
-                    })
-                  }
+                    });
+                    analytics.trackEvent(
+                      `[Explore] ${
+                        against ? 'Disable' : 'Enable'
+                      } grouping by chart reverse mode`,
+                    );
+                  }}
                 >
                   <UI.Text type={!against ? 'primary' : 'grey-dark'} small>
                     <UI.Tooltip tooltip='Divide by selected'>Divide</UI.Tooltip>

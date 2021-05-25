@@ -34,7 +34,7 @@ class HubTFSummaryListScreen extends Component {
     this.listTFSummary();
 
     // Analytics
-    analytics.pageView('tf_logs');
+    analytics.pageView('TF summary list');
   }
 
   listTFSummary = () => {

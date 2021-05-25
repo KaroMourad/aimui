@@ -1,8 +1,10 @@
 import './GroupByColor.less';
 
 import React, { useState, useRef, useEffect } from 'react';
-import UI from '../../../../../../../ui';
 import PropTypes from 'prop-types';
+
+import * as analytics from '../../../../../../../services/analytics';
+import UI from '../../../../../../../ui';
 import { classNames } from '../../../../../../../utils';
 import { getGroupingOptions } from '../../helpers';
 import { HubMainScreenModel } from '../../../../models/HubMainScreenModel';
@@ -126,6 +128,7 @@ function GroupByColor(props) {
                 setContextFilter({
                   groupByColor: values,
                 });
+                analytics.trackEvent('[Explore] Group by color');
               }}
               isOpen
               multi
@@ -137,7 +140,7 @@ function GroupByColor(props) {
                 </UI.Text>
                 <div
                   className='ControlsSidebar__item__popup__body__groupAgainst__switch'
-                  onClick={() =>
+                  onClick={() => {
                     setContextFilter({
                       groupByColor: [],
                       groupAgainst: {
@@ -145,8 +148,13 @@ function GroupByColor(props) {
                           .groupAgainst,
                         color: !against,
                       },
-                    })
-                  }
+                    });
+                    analytics.trackEvent(
+                      `[Explore] ${
+                        against ? 'Disable' : 'Enable'
+                      } grouping by color reverse mode`,
+                    );
+                  }}
                 >
                   <UI.Text type={!against ? 'primary' : 'grey-dark'} small>
                     <UI.Tooltip tooltip='Group by selected'>Group</UI.Tooltip>
@@ -209,7 +217,13 @@ function GroupByColor(props) {
                     <div className='ControlsSidebar__item__popup__body__action__row ControlsSidebar__item__popup__body__action__row--persistence'>
                       <div
                         className='ControlsSidebar__item__popup__body__action__row__persistenceSwitch'
-                        onClick={() => togglePersistence('color')}
+                        onClick={() => {
+                          togglePersistence('color');
+                          analytics.trackEvent(
+                            '[Explore] Toggle color persistence',
+                            { persist },
+                          );
+                        }}
                       >
                         <span
                           className={classNames({
@@ -230,7 +244,12 @@ function GroupByColor(props) {
                         <UI.Button
                           size='tiny'
                           disabled={groupByColor.length === 0}
-                          onClick={(evt) => setSeed(seed + 1, 'color')}
+                          onClick={(evt) => {
+                            setSeed(seed + 1, 'color');
+                            analytics.trackEvent(
+                              '[Explore] Shuffle colors of groups items',
+                            );
+                          }}
                         >
                           Shuffle colors
                         </UI.Button>
@@ -245,7 +264,12 @@ function GroupByColor(props) {
                       <div
                         key={paletteIndex}
                         className='ColorPalette'
-                        onClick={() => setColorPalette(paletteIndex)}
+                        onClick={() => {
+                          setColorPalette(paletteIndex);
+                          analytics.trackEvent(
+                            `[Explore] Set color palette to "${paletteIndex}"`,
+                          );
+                        }}
                       >
                         <UI.Radio
                           name={paletteIndex}

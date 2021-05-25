@@ -9,6 +9,7 @@ import SelectInput from './components/SelectInput/SelectInput';
 import UI from '../../../../../ui';
 import { classNames } from '../../../../../utils';
 import { HubMainScreenModel } from '../../models/HubMainScreenModel';
+import * as analytics from '../../../../../services/analytics';
 
 function SelectForm(props) {
   let history = useHistory();
@@ -28,6 +29,8 @@ function SelectForm(props) {
   }
 
   function search() {
+    analytics.trackEvent('[Explore] Search runs');
+
     const query = getFullQuery();
 
     setSearchState(
@@ -40,6 +43,7 @@ function SelectForm(props) {
       true,
     );
   }
+
   return (
     <div
       className={classNames({
@@ -98,7 +102,10 @@ function SelectForm(props) {
                 SelectForm__action: true,
                 disabled: runs.isLoading,
               })}
-              onClick={history.goBack}
+              onClick={() => {
+                history.goBack();
+                analytics.trackEvent('[Explore] History go back');
+              }}
             >
               <UI.Icon i='arrow_back_ios_new' />
             </div>
@@ -109,7 +116,10 @@ function SelectForm(props) {
                 SelectForm__action: true,
                 disabled: runs.isLoading,
               })}
-              onClick={history.goForward}
+              onClick={() => {
+                history.goForward();
+                analytics.trackEvent('[Explore] History go forward');
+              }}
             >
               <UI.Icon i='arrow_forward_ios' />
             </div>

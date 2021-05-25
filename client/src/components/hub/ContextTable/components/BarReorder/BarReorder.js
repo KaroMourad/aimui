@@ -6,6 +6,7 @@ import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import _ from 'lodash';
 import md5 from 'md5';
 
+import * as analytics from '../../../../../services/analytics';
 import UI from '../../../../../ui';
 import { classNames } from '../../../../../utils';
 
@@ -33,6 +34,7 @@ function BarReorder({
   function resetColumnsOrder() {
     updateColumns(undefined, true);
     setPanesKey(md5(++keySeed.current));
+    analytics.trackEvent('[Table] Reset table columns order');
   }
 
   return (
@@ -118,11 +120,12 @@ function BarReorder({
                     className='BarReorder__action'
                     type='secondary'
                     size='tiny'
-                    onClick={() =>
+                    onClick={() => {
                       setExcludedFields(
                         getParamsWithSameValue(availableColumnsForHiding),
-                      )
-                    }
+                      );
+                      analytics.trackEvent('[Table] Show table columns diff');
+                    }}
                   >
                     <UI.Tooltip tooltip='Hide params columns which have the same value'>
                       Show table diff
@@ -134,7 +137,10 @@ function BarReorder({
                     type='secondary'
                     size='tiny'
                     disabled={hiddenFields.length === 0}
-                    onClick={() => setExcludedFields([])}
+                    onClick={() => {
+                      setExcludedFields([]);
+                      analytics.trackEvent('[Table] Show all table columns');
+                    }}
                   >
                     Show all
                   </UI.Button>
@@ -145,7 +151,10 @@ function BarReorder({
                     disabled={
                       hiddenFields.length === availableColumnsForHiding.length
                     }
-                    onClick={() => setExcludedFields(availableColumnsForHiding)}
+                    onClick={() => {
+                      setExcludedFields(availableColumnsForHiding);
+                      analytics.trackEvent('[Table] Hide all table order');
+                    }}
                   >
                     Hide all
                   </UI.Button>

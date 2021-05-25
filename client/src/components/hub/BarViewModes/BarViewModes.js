@@ -3,6 +3,7 @@ import './BarViewModes.less';
 import React from 'react';
 import PropTypes from 'prop-types';
 
+import * as analytics from '../../../services/analytics';
 import { classNames } from '../../../utils';
 import UI from '../../../ui';
 
@@ -12,17 +13,26 @@ function BarViewModes({ viewMode, setViewMode }) {
       <ViewMode
         size='sm'
         active={viewMode === 'panel'}
-        onClick={() => setViewMode('panel')}
+        onClick={() => {
+          setViewMode('panel');
+          analytics.trackEvent('[Table] Set table view mode to "panel"');
+        }}
       />
       <ViewMode
         size='md'
         active={viewMode === 'resizable'}
-        onClick={() => setViewMode('resizable')}
+        onClick={() => {
+          setViewMode('resizable');
+          analytics.trackEvent('[Table] Set table view mode to "resizable"');
+        }}
       />
       <ViewMode
         size='lg'
         active={viewMode === 'context'}
-        onClick={() => setViewMode('context')}
+        onClick={() => {
+          setViewMode('context');
+          analytics.trackEvent('[Table] Set table view mode to "context"');
+        }}
       />
     </div>
   );

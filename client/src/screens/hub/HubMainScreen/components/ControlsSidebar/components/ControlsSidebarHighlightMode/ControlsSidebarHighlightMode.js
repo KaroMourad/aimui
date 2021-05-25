@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-
 import PropTypes from 'prop-types';
+
+import * as analytics from '../../../../../../../services/analytics';
 import UI from '../../../../../../../ui';
 import { classNames } from '../../../../../../../utils';
 import { HubMainScreenModel } from '../../../../models/HubMainScreenModel';
@@ -21,6 +22,9 @@ function ControlsSidebarHighlightMode(props) {
     });
     setItem(EXPLORE_METRIC_HIGHLIGHT_MODE, mode);
     setOpened(false);
+    analytics.trackEvent(
+      `[Explore] [LineChart] Set highlight mode to "${mode}"`,
+    );
   }
 
   useEffect(() => {

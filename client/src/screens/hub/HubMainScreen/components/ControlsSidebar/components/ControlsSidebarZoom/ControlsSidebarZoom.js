@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-
 import PropTypes from 'prop-types';
+
+import * as analytics from '../../../../../../../services/analytics';
 import UI from '../../../../../../../ui';
 import { classNames } from '../../../../../../../utils';
 import * as _ from 'lodash';
@@ -115,6 +116,9 @@ function ControlsSidebarZoom(props) {
                   });
                   setItem(EXPLORE_PANEL_SINGLE_ZOOM_MODE, true);
                   setOpenedZoomOptions(false);
+                  analytics.trackEvent(
+                    '[Explore] [LineChart] Set single zooming mode',
+                  );
                 }}
               >
                 <UI.Text small>Single zooming</UI.Text>
@@ -137,6 +141,9 @@ function ControlsSidebarZoom(props) {
                   });
                   setItem(EXPLORE_PANEL_SINGLE_ZOOM_MODE, false);
                   setOpenedZoomOptions(false);
+                  analytics.trackEvent(
+                    '[Explore] [LineChart] Set multiple zooming mode',
+                  );
                 }}
               >
                 <UI.Text small>Multiple zooming</UI.Text>
@@ -175,6 +182,9 @@ function ControlsSidebarZoom(props) {
                   },
                 });
                 setOpenedZoomOut(false);
+                analytics.trackEvent(
+                  '[Explore] [LineChart] Zoom out all charts',
+                );
               }
             }}
           >
@@ -237,6 +247,9 @@ function ControlsSidebarZoom(props) {
                         },
                       },
                     });
+                    analytics.trackEvent(
+                      '[Explore] [LineChart] Zoom out a specific chart',
+                    );
                   }}
                 >
                   <UI.Text small>Zoom out chart</UI.Text>
@@ -258,6 +271,7 @@ function ControlsSidebarZoom(props) {
                     },
                   });
                   setOpenedZoomOut(false);
+                  analytics.trackEvent('[Explore] [LineChart] Reset zooming');
                 }}
               >
                 <UI.Text small>Reset zooming</UI.Text>

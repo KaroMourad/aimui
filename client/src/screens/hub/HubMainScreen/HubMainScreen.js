@@ -264,9 +264,6 @@ function HubMainScreen(props) {
       if (state.search?.query !== null) {
         setItem(USER_LAST_SEARCH_QUERY, state.search?.query);
       }
-
-      // Analytics
-      analytics.pageView('search');
     }
   }
 
@@ -388,7 +385,7 @@ function HubMainScreen(props) {
     );
 
     // Analytics
-    analytics.pageView('search');
+    analytics.pageView('Explore');
 
     return () => {
       subscription.unsubscribe();

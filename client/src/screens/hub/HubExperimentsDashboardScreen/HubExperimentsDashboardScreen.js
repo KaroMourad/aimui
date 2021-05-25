@@ -34,7 +34,7 @@ class HubExperimentsDashboardScreen extends React.Component {
     this.recoverStateFromURL(window.location.search);
 
     // Analytics
-    analytics.pageView('dashboard');
+    analytics.pageView('Dashboard');
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -106,9 +106,6 @@ class HubExperimentsDashboardScreen extends React.Component {
     const URL = this.stateToURL(state);
     if (this.props.location.pathname + this.props.location.search !== URL) {
       this.props.history.push(URL);
-
-      // Analytics
-      analytics.pageView('dashboard');
     }
   };
 

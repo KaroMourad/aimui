@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import UI from '../../../../../ui';
 import { classNames } from '../../../../../utils';
+import * as analytics from '../../../../../services/analytics';
 
 function BarRowHeightSelect({ rowHeightMode, setRowHeightMode }) {
   let [opened, setOpened] = useState(false);
@@ -45,7 +46,10 @@ function BarRowHeightSelect({ rowHeightMode, setRowHeightMode }) {
                 BarRowHeightSelect__item: true,
                 active: rowHeightMode === 'short',
               })}
-              onClick={() => setRowHeightMode('short')}
+              onClick={() => {
+                setRowHeightMode('short');
+                analytics.trackEvent('[Table] Set table row height to "short"');
+              }}
             >
               <UI.Text small>Short</UI.Text>
             </div>
@@ -54,7 +58,12 @@ function BarRowHeightSelect({ rowHeightMode, setRowHeightMode }) {
                 BarRowHeightSelect__item: true,
                 active: rowHeightMode === 'medium',
               })}
-              onClick={() => setRowHeightMode('medium')}
+              onClick={() => {
+                setRowHeightMode('medium');
+                analytics.trackEvent(
+                  '[Table] Set table row height to "medium"',
+                );
+              }}
             >
               <UI.Text small>Medium</UI.Text>
             </div>
@@ -63,7 +72,10 @@ function BarRowHeightSelect({ rowHeightMode, setRowHeightMode }) {
                 BarRowHeightSelect__item: true,
                 active: rowHeightMode === 'tall',
               })}
-              onClick={() => setRowHeightMode('tall')}
+              onClick={() => {
+                setRowHeightMode('tall');
+                analytics.trackEvent('[Table] Set table row height to "tall"');
+              }}
             >
               <UI.Text small>Tall</UI.Text>
             </div>

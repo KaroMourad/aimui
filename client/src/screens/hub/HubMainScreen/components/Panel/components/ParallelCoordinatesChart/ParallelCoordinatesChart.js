@@ -10,6 +10,7 @@ import {
   getObjectValueByPath,
 } from '../../../../../../../utils';
 import { HubMainScreenModel } from '../../../../models/HubMainScreenModel';
+import * as analytics from '../../../../../../../services/analytics';
 
 const d3 = require('d3');
 
@@ -879,6 +880,9 @@ function ParallelCoordinatesChart(props) {
                       run.run_hash,
                       param.key,
                       param.contentType,
+                    );
+                    analytics.trackEvent(
+                      '[Explore] [ParPlot] Line point click',
                     );
                   });
               }

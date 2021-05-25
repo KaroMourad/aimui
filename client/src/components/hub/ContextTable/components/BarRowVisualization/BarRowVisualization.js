@@ -2,6 +2,8 @@ import './BarRowVisualization.less';
 
 import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
+
+import * as analytics from '../../../../../services/analytics';
 import UI from '../../../../../ui';
 import { classNames } from '../../../../../utils';
 
@@ -37,13 +39,19 @@ function BarRowVisualization({ hiddenMetrics, setHiddenMetrics }) {
           <div className='BarRowVisualization__body'>
             <div
               className='BarRowVisualization__item'
-              onClick={() => setHiddenMetrics('show_all_metrics')}
+              onClick={() => {
+                setHiddenMetrics('show_all_metrics');
+                analytics.trackEvent('[Table] Visualize all table rows');
+              }}
             >
               <UI.Text small>Visualize all rows</UI.Text>
             </div>
             <div
               className='BarRowVisualization__item'
-              onClick={() => setHiddenMetrics('hide_all_metrics')}
+              onClick={() => {
+                setHiddenMetrics('hide_all_metrics');
+                analytics.trackEvent('[Table] Hide all table rows');
+              }}
             >
               <UI.Text small>Hide all rows</UI.Text>
             </div>

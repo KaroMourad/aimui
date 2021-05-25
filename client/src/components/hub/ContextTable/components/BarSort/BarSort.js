@@ -11,6 +11,7 @@ import {
 } from '../../../../../utils';
 import UI from '../../../../../ui';
 import * as _ from 'lodash';
+import * as analytics from '../../../../../services/analytics';
 
 function BarSort({ sortFields, setSortFields, maxHeight, fields }) {
   let [opened, setOpened] = useState(false);
@@ -76,8 +77,10 @@ function BarSort({ sortFields, setSortFields, maxHeight, fields }) {
           field[0] === path ? [field[0], order] : field,
         );
       }
+      analytics.trackEvent('[Table] Reset table sorting by a key');
     } else {
       updSortFields.push([path, order]);
+      analytics.trackEvent('[Table] Apply table sorting by a key');
     }
     updSortFields = _.uniqBy(
       updSortFields.filter((f) => !!f[0]),
@@ -221,7 +224,10 @@ function BarSort({ sortFields, setSortFields, maxHeight, fields }) {
                     type='negative'
                     size='tiny'
                     disabled={sortFields.length === 0}
-                    onClick={() => setSortFields([])}
+                    onClick={() => {
+                      setSortFields([]);
+                      analytics.trackEvent('[Table] Reset table sorting');
+                    }}
                   >
                     Reset sorting
                   </UI.Button>

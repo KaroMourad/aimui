@@ -18,6 +18,7 @@ import {
   getObjectValueByPath,
   formatValue,
 } from '../../../../../../../utils';
+import * as analytics from '../../../../../../../services/analytics';
 
 const popUpDefaultWidth = 250;
 const popUpDefaultHeight = 250;
@@ -189,6 +190,7 @@ function PanelPopUps(props) {
       })
       .then((tagsIds) => {
         getCommitTags(runHash);
+        analytics.trackEvent('[Explore] Tag a run');
       });
   }
 

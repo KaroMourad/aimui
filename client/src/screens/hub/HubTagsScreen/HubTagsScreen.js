@@ -30,7 +30,7 @@ class HubTagsScreen extends React.Component {
     this.getTags(this.props.completeProgress);
 
     // Analytics
-    analytics.pageView('tags');
+    analytics.pageView('Tags');
   }
 
   getTags = (finallyCallback) => {

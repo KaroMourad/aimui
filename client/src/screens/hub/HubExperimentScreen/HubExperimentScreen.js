@@ -69,7 +69,7 @@ class HubExperimentScreen extends React.Component {
     window.addEventListener('resize', this.handleResize);
 
     // Analytics
-    analytics.pageView('experiment');
+    analytics.pageView('Experiment detail');
   }
 
   componentWillUnmount() {

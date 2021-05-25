@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import PropTypes from 'prop-types';
 
+import * as analytics from '../../../../../../../services/analytics';
 import UI from '../../../../../../../ui';
 import { classNames } from '../../../../../../../utils';
 import { HubMainScreenModel } from '../../../../models/HubMainScreenModel';
@@ -141,7 +142,12 @@ function ControlsSidebarAxesProperties(props) {
                   onClick={
                     (xScale || 0) === 0
                       ? null
-                      : () => changeAxisScaleOption('xScale', 0)
+                      : () => {
+                        changeAxisScaleOption('xScale', 0);
+                        analytics.trackEvent(
+                          '[Explore] [LineChart] Set X axis scale to "linear"',
+                        );
+                      }
                   }
                 >
                   <UI.Text small>linear</UI.Text>
@@ -154,7 +160,12 @@ function ControlsSidebarAxesProperties(props) {
                   onClick={
                     xScale === 1
                       ? null
-                      : () => changeAxisScaleOption('xScale', 1)
+                      : () => {
+                        changeAxisScaleOption('xScale', 1);
+                        analytics.trackEvent(
+                          '[Explore] [LineChart] Set X axis scale to "log"',
+                        );
+                      }
                   }
                 >
                   <UI.Text small>log</UI.Text>
@@ -174,7 +185,12 @@ function ControlsSidebarAxesProperties(props) {
                   onClick={
                     (yScale || 'linear') === 0
                       ? null
-                      : () => changeAxisScaleOption('yScale', 0)
+                      : () => {
+                        changeAxisScaleOption('yScale', 0);
+                        analytics.trackEvent(
+                          '[Explore] [LineChart] Set Y axis scale to "linear"',
+                        );
+                      }
                   }
                 >
                   <UI.Text small>linear</UI.Text>
@@ -187,7 +203,12 @@ function ControlsSidebarAxesProperties(props) {
                   onClick={
                     yScale === 1
                       ? null
-                      : () => changeAxisScaleOption('yScale', 1)
+                      : () => {
+                        changeAxisScaleOption('yScale', 1);
+                        analytics.trackEvent(
+                          '[Explore] [LineChart] Set Y axis scale to "log"',
+                        );
+                      }
                   }
                 >
                   <UI.Text small>log</UI.Text>
@@ -214,7 +235,12 @@ function ControlsSidebarAxesProperties(props) {
                       ControlsSidebar__item__popup__list__item: true,
                       active: (xAlignment || 'step') === type,
                     })}
-                    onClick={() => changeXAlignment(type)}
+                    onClick={() => {
+                      changeXAlignment(type);
+                      analytics.trackEvent(
+                        `[Explore] [LineChart] Set X axis alignment to "${type}"`,
+                      );
+                    }}
                   >
                     <UI.Text small>{type.replace('_', ' ')}</UI.Text>
                   </div>

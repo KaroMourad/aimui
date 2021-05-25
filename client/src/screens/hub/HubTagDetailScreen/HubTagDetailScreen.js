@@ -14,6 +14,7 @@ import UI from '../../../ui';
 import * as storeUtils from '../../../storeUtils';
 import * as classes from '../../../constants/classes';
 import * as screens from '../../../constants/screens';
+import * as analytics from '../../../services/analytics';
 
 class HubTagDetailScreen extends React.Component {
   constructor(props) {
@@ -48,6 +49,7 @@ class HubTagDetailScreen extends React.Component {
   componentDidMount() {
     this.getTag(this.props.match.params.tag_id);
     this.getRelatedRuns(this.props.match.params.tag_id);
+    analytics.pageView('Tag detail');
   }
 
   getTag = (tag_id) => {

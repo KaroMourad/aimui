@@ -75,6 +75,8 @@ function Activity(props) {
       date.getTime() / 1000,
     )} and run.date < ${Math.ceil(shiftDate(date, 1).getTime() / 1000)}`;
     props.setRunsSearchBarValue(query, true);
+
+    analytics.trackEvent('[Dashboard] [Activity] Search runs by date');
   }
 
   return (

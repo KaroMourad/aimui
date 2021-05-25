@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import UI from '../../../../../../../ui';
 import PropTypes from 'prop-types';
+
+import * as analytics from '../../../../../../../services/analytics';
+import UI from '../../../../../../../ui';
 import { classNames } from '../../../../../../../ui/utils';
 import { HubMainScreenModel } from '../../../../models/HubMainScreenModel';
-import { chart } from 'highcharts';
 
 function Aggregate(props) {
   let [opened, setOpened] = useState(false);
@@ -45,15 +46,21 @@ function Aggregate(props) {
             active: settings.persistent.aggregated,
             disabled: disabled,
           })}
-          onClick={(evt) =>
+          onClick={(evt) => {
+            analytics.trackEvent(
+              settings.persistent.aggregated
+                ? '[Explore] [LineChart] Deaggregate metrics'
+                : '[Explore] [LineChart] Aggregate metrics',
+            );
+
             setChartSettingsState({
               ...settings,
               persistent: {
                 ...settings.persistent,
                 aggregated: !settings.persistent.aggregated,
               },
-            })
-          }
+            });
+          }}
         >
           <UI.Icon i='group_work' scale={1.7} />
         </div>
@@ -116,6 +123,9 @@ function Aggregate(props) {
                     setContextFilter({
                       aggregatedLine: method.key,
                     });
+                    analytics.trackEvent(
+                      `[Explore] [LineChart] Set aggregated line to "${method.key}"`,
+                    );
                   }}
                 >
                   <UI.Text small>{method.name}</UI.Text>
@@ -149,6 +159,9 @@ function Aggregate(props) {
                     setContextFilter({
                       aggregatedArea: method.key,
                     });
+                    analytics.trackEvent(
+                      `[Explore] [LineChart] Set aggregated area to "${method.key}"`,
+                    );
                   }}
                 >
                   <UI.Text small>{method.name}</UI.Text>

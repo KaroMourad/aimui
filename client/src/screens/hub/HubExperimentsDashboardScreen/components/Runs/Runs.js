@@ -32,6 +32,7 @@ import {
   flattenObject,
 } from '../../../../../utils';
 import QueryParseErrorAlert from '../../../../../components/hub/QueryParseErrorAlert/QueryParseErrorAlert';
+import * as analytics from '../../../../../services/analytics';
 
 class Runs extends React.Component {
   constructor(props) {
@@ -94,6 +95,7 @@ class Runs extends React.Component {
   }
 
   getRuns = (query, updateURL = true) => {
+    analytics.trackEvent('[Dashboard] [Runs] Search runs');
     // window.scrollTo(0, 0);
 
     this.setState({

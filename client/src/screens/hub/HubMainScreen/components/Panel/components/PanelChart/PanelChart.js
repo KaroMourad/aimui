@@ -13,6 +13,7 @@ import {
   findClosestIndex,
 } from '../../../../../../../utils';
 import { HubMainScreenModel } from '../../../../models/HubMainScreenModel';
+import * as analytics from '../../../../../../../services/analytics';
 
 const d3 = require('d3');
 
@@ -724,6 +725,7 @@ function PanelChart(props) {
             },
           },
         });
+        analytics.trackEvent('[Explore] [LineChart] Line chart zoom out');
       }
       svg.current
         .append('foreignObject')
@@ -1552,6 +1554,7 @@ function PanelChart(props) {
             trace.metricName,
             trace.traceContext,
           );
+          analytics.trackEvent('[Explore] [LineChart] Line point click');
         });
 
       if (active || focused) {

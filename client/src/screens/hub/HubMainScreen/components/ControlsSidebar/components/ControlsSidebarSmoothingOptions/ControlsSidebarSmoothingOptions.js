@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-
 import PropTypes from 'prop-types';
+
+import * as analytics from '../../../../../../../services/analytics';
 import UI from '../../../../../../../ui';
 import { classNames } from '../../../../../../../utils';
 import { HubMainScreenModel } from '../../../../models/HubMainScreenModel';
@@ -148,10 +149,15 @@ function ControlsSidebarSmoothingOptions(props) {
                         ControlsSidebar__item__popup__list__item: true,
                         active: (smoothingAlgorithm || 'ema') === algorithm.key,
                       })}
-                      onClick={(evt) =>
+                      onClick={
                         (smoothingAlgorithm || 'ema') === algorithm.key
                           ? null
-                          : changeSmoothingAlgorithm(algorithm.key)
+                          : (evt) => {
+                            changeSmoothingAlgorithm(algorithm.key);
+                            analytics.trackEvent(
+                                `[Explore] [LineChart] Set smoothening algorithm to "${algorithm.key}"`,
+                            );
+                          }
                       }
                     >
                       <UI.Text small>{algorithm.name}</UI.Text>
@@ -191,7 +197,14 @@ function ControlsSidebarSmoothingOptions(props) {
                     active: !interpolate,
                   })}
                   onClick={
-                    !interpolate ? null : () => toggleCurveInterpolation(false)
+                    !interpolate
+                      ? null
+                      : () => {
+                        toggleCurveInterpolation(false);
+                        analytics.trackEvent(
+                          '[Explore] [LineChart] Set interpolation method to "linear"',
+                        );
+                      }
                   }
                 >
                   <UI.Text small>linear</UI.Text>
@@ -202,7 +215,14 @@ function ControlsSidebarSmoothingOptions(props) {
                     active: interpolate,
                   })}
                   onClick={
-                    interpolate ? null : () => toggleCurveInterpolation(true)
+                    interpolate
+                      ? null
+                      : () => {
+                        toggleCurveInterpolation(true);
+                        analytics.trackEvent(
+                          '[Explore] [LineChart] Set interpolation method to "cubic"',
+                        );
+                      }
                   }
                 >
                   <UI.Text small>cubic</UI.Text>

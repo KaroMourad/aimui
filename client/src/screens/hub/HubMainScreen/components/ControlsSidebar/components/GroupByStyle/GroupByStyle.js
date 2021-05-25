@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import UI from '../../../../../../../ui';
 import PropTypes from 'prop-types';
+
+import * as analytics from '../../../../../../../services/analytics';
+import UI from '../../../../../../../ui';
 import { classNames } from '../../../../../../../utils';
 import { getGroupingOptions } from '../../helpers';
 import { HubMainScreenModel } from '../../../../models/HubMainScreenModel';
@@ -114,6 +116,7 @@ function GroupByStyle(props) {
                 setContextFilter({
                   groupByStyle: values,
                 });
+                analytics.trackEvent('[Explore] Group by style');
               }}
               isOpen
               multi
@@ -125,7 +128,7 @@ function GroupByStyle(props) {
                 </UI.Text>
                 <div
                   className='ControlsSidebar__item__popup__body__groupAgainst__switch'
-                  onClick={() =>
+                  onClick={() => {
                     setContextFilter({
                       groupByStyle: [],
                       groupAgainst: {
@@ -133,8 +136,13 @@ function GroupByStyle(props) {
                           .groupAgainst,
                         style: !against,
                       },
-                    })
-                  }
+                    });
+                    analytics.trackEvent(
+                      `[Explore] ${
+                        against ? 'Disable' : 'Enable'
+                      } grouping by style reverse mode`,
+                    );
+                  }}
                 >
                   <UI.Text type={!against ? 'primary' : 'grey-dark'} small>
                     <UI.Tooltip tooltip='Group by selected'>Group</UI.Tooltip>
@@ -196,7 +204,13 @@ function GroupByStyle(props) {
                   <div className='ControlsSidebar__item__popup__body__action__row ControlsSidebar__item__popup__body__action__row--persistence'>
                     <div
                       className='ControlsSidebar__item__popup__body__action__row__persistenceSwitch'
-                      onClick={() => togglePersistence('style')}
+                      onClick={() => {
+                        togglePersistence('style');
+                        analytics.trackEvent(
+                          '[Explore] Toggle style persistence',
+                          { persist },
+                        );
+                      }}
                     >
                       <span
                         className={classNames({
@@ -217,7 +231,12 @@ function GroupByStyle(props) {
                       <UI.Button
                         size='tiny'
                         disabled={groupByStyle.length === 0}
-                        onClick={(evt) => setSeed(seed + 1, 'style')}
+                        onClick={(evt) => {
+                          setSeed(seed + 1, 'style');
+                          analytics.trackEvent(
+                            '[Explore] Shuffle styles of groups items',
+                          );
+                        }}
                       >
                         Shuffle
                       </UI.Button>
