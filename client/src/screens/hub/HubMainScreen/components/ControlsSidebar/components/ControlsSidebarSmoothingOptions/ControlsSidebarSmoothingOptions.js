@@ -12,11 +12,8 @@ function ControlsSidebarSmoothingOptions(props) {
   let popupRef = useRef();
 
   const { setChartSettingsState, setTraceList } = HubMainScreenModel.emitters;
-  const {
-    interpolate,
-    smoothingAlgorithm,
-    smoothFactor,
-  } = props.settings.persistent;
+  const { interpolate, smoothingAlgorithm, smoothFactor } =
+    props.settings.persistent;
 
   function toggleCurveInterpolation(interpolate) {
     setChartSettingsState({

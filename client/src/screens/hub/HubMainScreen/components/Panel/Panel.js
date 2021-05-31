@@ -89,10 +89,8 @@ function Panel(props) {
     HubMainScreenModel.events.SET_RUNS_STATE,
   ]);
 
-  let {
-    isExploreParamsModeEnabled,
-    getCountOfSelectedParams,
-  } = HubMainScreenModel.helpers;
+  let { isExploreParamsModeEnabled, getCountOfSelectedParams } =
+    HubMainScreenModel.helpers;
 
   useEffect(() => {
     if (props.resizing === false) {

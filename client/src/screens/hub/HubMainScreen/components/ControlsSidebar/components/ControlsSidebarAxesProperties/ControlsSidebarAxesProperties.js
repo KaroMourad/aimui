@@ -11,11 +11,8 @@ function ControlsSidebarAxesProperties(props) {
 
   let popupRef = useRef();
 
-  const {
-    setChartSettingsState,
-    setChartPointsCount,
-    setTraceList,
-  } = HubMainScreenModel.emitters;
+  const { setChartSettingsState, setChartPointsCount, setTraceList } =
+    HubMainScreenModel.emitters;
   const { xScale, yScale, xAlignment, pointsCount } = props.settings.persistent;
 
   function changeXAlignment(type) {

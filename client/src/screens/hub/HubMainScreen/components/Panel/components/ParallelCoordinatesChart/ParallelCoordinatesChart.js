@@ -67,16 +67,11 @@ function ParallelCoordinatesChart(props) {
   const circles = useRef(null);
   const brushSelection = useRef(null);
 
-  let {
-    setChartFocusedState,
-    setChartFocusedActiveState,
-  } = HubMainScreenModel.emitters;
+  let { setChartFocusedState, setChartFocusedActiveState } =
+    HubMainScreenModel.emitters;
 
-  let {
-    getMetricColor,
-    traceToHash,
-    contextToHash,
-  } = HubMainScreenModel.helpers;
+  let { getMetricColor, traceToHash, contextToHash } =
+    HubMainScreenModel.helpers;
 
   function initD3() {
     d3.selection.prototype.moveToFront = function () {

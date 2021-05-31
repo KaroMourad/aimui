@@ -54,15 +54,11 @@ function HubMainScreen(props) {
     searchError: null,
   });
 
-  let {
-    runs,
-    traceList,
-    search,
-    searchInput,
-  } = HubMainScreenModel.useHubMainScreenState([
-    HubMainScreenModel.events.SET_RUNS_STATE,
-    HubMainScreenModel.events.SET_TRACE_LIST,
-  ]);
+  let { runs, traceList, search, searchInput } =
+    HubMainScreenModel.useHubMainScreenState([
+      HubMainScreenModel.events.SET_RUNS_STATE,
+      HubMainScreenModel.events.SET_TRACE_LIST,
+    ]);
 
   const {
     setRunsState,

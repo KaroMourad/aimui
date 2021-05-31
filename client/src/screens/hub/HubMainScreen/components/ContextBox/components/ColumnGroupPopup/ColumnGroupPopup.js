@@ -4,10 +4,15 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import UI from '../../../../../../../ui';
 import { classNames } from '../../../../../../../utils';
+import { HubMainScreenModel } from '../../../../models/HubMainScreenModel';
 
 function ColumnGroupPopup(props) {
   const { contextFilter, setContextFilter, param, triggerer } = props;
-  const { groupByColor, groupByStyle, groupByChart } = contextFilter;
+  const {
+    color: groupByColor,
+    style: groupByStyle,
+    chart: groupByChart,
+  } = contextFilter.groupBy;
 
   function filterIncludesParam(groupFilter) {
     for (let i = 0; i < groupFilter.length; i++) {
@@ -21,9 +26,12 @@ function ColumnGroupPopup(props) {
   function toggleGrouping(filterName, groupFilter) {
     setContextFilter(
       {
-        [filterName]: filterIncludesParam(groupFilter)
-          ? groupFilter.filter((key) => key !== param)
-          : groupFilter.concat([param]),
+        groupBy: {
+          ...HubMainScreenModel.getState().contextFilter.groupBy,
+          [filterName]: filterIncludesParam(groupFilter)
+            ? groupFilter.filter((key) => key !== param)
+            : groupFilter.concat([param]),
+        },
       },
       null,
       true,
@@ -69,7 +77,7 @@ function ColumnGroupPopup(props) {
                 size='tiny'
                 type='primary'
                 ghost={!filterIncludesParam(groupByColor)}
-                onClick={(evt) => toggleGrouping('groupByColor', groupByColor)}
+                onClick={(evt) => toggleGrouping('color', groupByColor)}
               >
                 {filterIncludesParam(groupByColor) ? 'Remove' : 'Apply'}
               </UI.Button>
@@ -83,7 +91,7 @@ function ColumnGroupPopup(props) {
                 size='tiny'
                 type='primary'
                 ghost={!filterIncludesParam(groupByStyle)}
-                onClick={(evt) => toggleGrouping('groupByStyle', groupByStyle)}
+                onClick={(evt) => toggleGrouping('style', groupByStyle)}
               >
                 {filterIncludesParam(groupByStyle) ? 'Remove' : 'Apply'}
               </UI.Button>
@@ -97,7 +105,7 @@ function ColumnGroupPopup(props) {
                 size='tiny'
                 type='primary'
                 ghost={!filterIncludesParam(groupByChart)}
-                onClick={(evt) => toggleGrouping('groupByChart', groupByChart)}
+                onClick={(evt) => toggleGrouping('chart', groupByChart)}
               >
                 {filterIncludesParam(groupByChart) ? 'Remove' : 'Apply'}
               </UI.Button>

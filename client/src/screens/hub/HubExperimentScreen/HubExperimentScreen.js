@@ -573,8 +573,8 @@ class HubExperimentScreen extends React.Component {
                                   to={buildUrl(
                                     screens.HUB_PROJECT_EXECUTABLE_PROCESS_DETAIL,
                                     {
-                                      process_id: this.state.commit.process
-                                        .uuid,
+                                      process_id:
+                                        this.state.commit.process.uuid,
                                     },
                                   )}
                                 >

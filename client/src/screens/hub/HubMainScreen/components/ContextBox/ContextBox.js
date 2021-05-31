@@ -38,19 +38,14 @@ function ContextBox(props) {
   let tableResizeObserver = useRef();
   let tableContainerResizeObserver = useRef();
 
-  let {
-    runs,
-    traceList,
-    chart,
-    contextFilter,
-    sortFields,
-  } = HubMainScreenModel.useHubMainScreenState([
-    HubMainScreenModel.events.SET_RUNS_STATE,
-    HubMainScreenModel.events.SET_TRACE_LIST,
-    HubMainScreenModel.events.SET_CHART_FOCUSED_ACTIVE_STATE,
-    HubMainScreenModel.events.SET_SORT_FIELDS,
-    HubMainScreenModel.events.SET_CHART_HIDDEN_METRICS,
-  ]);
+  let { runs, traceList, chart, contextFilter, sortFields } =
+    HubMainScreenModel.useHubMainScreenState([
+      HubMainScreenModel.events.SET_RUNS_STATE,
+      HubMainScreenModel.events.SET_TRACE_LIST,
+      HubMainScreenModel.events.SET_CHART_FOCUSED_ACTIVE_STATE,
+      HubMainScreenModel.events.SET_SORT_FIELDS,
+      HubMainScreenModel.events.SET_CHART_HIDDEN_METRICS,
+    ]);
 
   let {
     setChartFocusedState,
@@ -277,8 +272,11 @@ function ContextBox(props) {
       if (step === null) {
         step = line?.axisValues?.[line?.axisValues?.length - 1];
       } else {
-        step = getClosestStepData(step, line?.data, line?.axisValues)
-          .closestStep;
+        step = getClosestStepData(
+          step,
+          line?.data,
+          line?.axisValues,
+        ).closestStep;
       }
 
       setChartFocusedActiveState({
@@ -926,8 +924,10 @@ function ContextBox(props) {
               }
             }
 
-            const runsCount = _.uniqBy(traceModel.series, 'run.run_hash')
-              .length;
+            const runsCount = _.uniqBy(
+              traceModel.series,
+              'run.run_hash',
+            ).length;
             data[JSON.stringify(traceModel.config)] = {
               items: [],
               data: {
@@ -1131,15 +1131,11 @@ function ContextBox(props) {
 
             for (let metricKey in runs?.aggMetrics) {
               runs?.aggMetrics[metricKey].forEach((metricContext) => {
-                const {
-                  min,
-                  avg,
-                  med,
-                  max,
-                } = traceModel.getAggregatedMetricMinMax(
-                  metricKey,
-                  metricContext,
-                );
+                const { min, avg, med, max } =
+                  traceModel.getAggregatedMetricMinMax(
+                    metricKey,
+                    metricContext,
+                  );
                 data[JSON.stringify(traceModel.config)].data[
                   `${metricKey}-${JSON.stringify(metricContext)}`
                 ] = {
@@ -1199,9 +1195,8 @@ function ContextBox(props) {
               paramKeys.current[paramKey].forEach((key) => {
                 const param = `params.${paramKey}.${key}`;
                 if (traceModel.config.hasOwnProperty(param)) {
-                  data[JSON.stringify(traceModel.config)].data[
-                    param
-                  ] = formatValue(traceModel.config[param]);
+                  data[JSON.stringify(traceModel.config)].data[param] =
+                    formatValue(traceModel.config[param]);
                 } else {
                   let values = [];
                   for (let i = 0; i < traceModel.series.length; i++) {

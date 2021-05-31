@@ -130,9 +130,8 @@ function CalendarHeatmap({
             <div
               className={classNames({
                 CalendarHeatmap__cell: true,
-                [`CalendarHeatmap__cell--scale-${scale}`]: Number.isInteger(
-                  scale,
-                ),
+                [`CalendarHeatmap__cell--scale-${scale}`]:
+                  Number.isInteger(scale),
               })}
               onClick={
                 !!onCellClick ? () => onCellClick(dataItem, date, index) : null

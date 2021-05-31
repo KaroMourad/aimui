@@ -717,16 +717,17 @@ class Runs extends React.Component {
                   <div
                     className={classNames({
                       Table__header__action: true,
-                      active: !!this.state.coloredCols[
-                        JSON.stringify([
-                          'params',
-                          '__METRICS__',
-                          metricName,
-                          contextKey,
-                          'values',
-                          'last',
-                        ])
-                      ],
+                      active:
+                        !!this.state.coloredCols[
+                          JSON.stringify([
+                            'params',
+                            '__METRICS__',
+                            metricName,
+                            contextKey,
+                            'values',
+                            'last',
+                          ])
+                        ],
                       disabled: !this.checkAbilityForColoring([
                         'params',
                         '__METRICS__',
@@ -787,9 +788,10 @@ class Runs extends React.Component {
                 <div
                   className={classNames({
                     Table__header__action: true,
-                    active: !!this.state.coloredCols[
-                      JSON.stringify(['params', paramKey, key])
-                    ],
+                    active:
+                      !!this.state.coloredCols[
+                        JSON.stringify(['params', paramKey, key])
+                      ],
                     disabled: !this.checkAbilityForColoring([
                       'params',
                       paramKey,
@@ -843,16 +845,17 @@ class Runs extends React.Component {
       Object.keys(this.metricKeys).forEach((metricName, metricKey) =>
         this.metricKeys[metricName].forEach((metricContext, contextKey) => {
           let metricValue = this.getMetricValue(run, metricName, metricContext);
-          let color = this.state.coloredCols[
-            JSON.stringify([
-              'params',
-              '__METRICS__',
-              metricName,
-              contextKey,
-              'values',
-              'last',
-            ])
-          ]?.[metricValue];
+          let color =
+            this.state.coloredCols[
+              JSON.stringify([
+                'params',
+                '__METRICS__',
+                metricName,
+                contextKey,
+                'values',
+                'last',
+              ])
+            ]?.[metricValue];
           item[`${metricName}-${JSON.stringify(metricContext)}`] = {
             content: formatValue(
               typeof metricValue === 'number'
@@ -869,9 +872,10 @@ class Runs extends React.Component {
 
       Object.keys(this.paramKeys).forEach((paramKey) =>
         this.paramKeys[paramKey].forEach((key) => {
-          let color = this.state.coloredCols[
-            JSON.stringify(['params', paramKey, key])
-          ]?.[run.params?.[paramKey]?.[key]];
+          let color =
+            this.state.coloredCols[JSON.stringify(['params', paramKey, key])]?.[
+              run.params?.[paramKey]?.[key]
+            ];
           item[`params.${paramKey}.${key}`] = {
             content: formatValue(run.params?.[paramKey]?.[key]),
             style: {

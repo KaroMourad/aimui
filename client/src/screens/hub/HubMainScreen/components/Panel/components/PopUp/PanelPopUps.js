@@ -103,7 +103,8 @@ function PanelPopUps(props) {
       }
       const tagsWrapperRect = tagsWrapper.current.getBoundingClientRect();
       if (tagsWrapperRect.top > height - 100) {
-        const chartPopUpRect = tagsWrapper.current.parentNode.parentNode.getBoundingClientRect();
+        const chartPopUpRect =
+          tagsWrapper.current.parentNode.parentNode.getBoundingClientRect();
         top = null;
         bottom = height - chartPopUpRect.bottom;
       } else {
@@ -378,8 +379,8 @@ function PanelPopUps(props) {
               )
             ) {
               groupConfig = {};
-              let groupFields = HubMainScreenModel.getState().traceList
-                .grouping;
+              let groupFields =
+                HubMainScreenModel.getState().traceList.grouping;
               for (let key in groupFields) {
                 if (groupFields[key].length > 0) {
                   groupConfig[key] = groupFields[key].map((param) => ({
@@ -464,9 +465,9 @@ function PanelPopUps(props) {
     }
   }, [
     chart.focused.circle,
-    contextFilter.groupByColor,
-    contextFilter.groupByStyle,
-    contextFilter.groupByChart,
+    contextFilter.groupBy.color,
+    contextFilter.groupBy.style,
+    contextFilter.groupBy.chart,
     contextFilter.groupAgainst,
   ]);
 

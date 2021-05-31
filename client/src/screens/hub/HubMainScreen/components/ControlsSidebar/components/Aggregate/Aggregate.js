@@ -12,10 +12,8 @@ function Aggregate(props) {
 
   const { settings, aggregatedArea, aggregatedLine, disabled } = props;
 
-  const {
-    setContextFilter,
-    setChartSettingsState,
-  } = HubMainScreenModel.emitters;
+  const { setContextFilter, setChartSettingsState } =
+    HubMainScreenModel.emitters;
 
   useEffect(() => {
     if (opened && popupRef.current) {

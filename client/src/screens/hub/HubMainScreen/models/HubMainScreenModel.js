@@ -104,9 +104,11 @@ const state = {
 
   // Grouping filter
   contextFilter: {
-    groupByColor: [],
-    groupByStyle: [],
-    groupByChart: [],
+    groupBy: {
+      color: [],
+      style: [],
+      chart: [],
+    },
     groupAgainst: {
       color: false,
       style: false,
@@ -161,9 +163,11 @@ const initialControls = {
     },
   },
   contextFilter: {
-    groupByColor: [],
-    groupByStyle: [],
-    groupByChart: [],
+    groupBy: {
+      color: [],
+      style: [],
+      chart: [],
+    },
     groupAgainst: {
       color: false,
       style: false,
@@ -250,9 +254,11 @@ function setRunsState(runsState, callback = null) {
       },
       contextFilter: {
         ...getState().contextFilter,
-        groupByColor: [],
-        groupByStyle: [],
-        groupByChart: [],
+        groupBy: {
+          color: [],
+          style: [],
+          chart: [],
+        },
       },
     }),
   });
@@ -294,14 +300,9 @@ function setTraceList() {
     return;
   }
 
-  const seed = getState().contextFilter.seed;
-  const persist = getState().contextFilter.persist;
+  const { seed, persist, groupAgainst } = getState().contextFilter;
   const colorPalette = getState().colorPalette;
-  const groupAgainst = getState().contextFilter.groupAgainst;
-  let groupByColor;
-  let groupByStyle;
-  let groupByChart;
-
+  let groupBy = {};
   const groupingAvailableOptions = getGroupingOptions(
     getAllParamsPaths(),
     [],
@@ -312,42 +313,51 @@ function setTraceList() {
     .map((category) => category.options.map((option) => option.value).flat())
     .flat();
 
-  if (getState().contextFilter.groupByColor.length > 0 && groupAgainst?.color) {
-    groupByColor = _.difference(
+  if (
+    getState().contextFilter.groupBy.color.length > 0 &&
+    groupAgainst?.color
+  ) {
+    groupBy.color = _.difference(
       groupingAvailableFields,
-      getState().contextFilter.groupByColor,
+      getState().contextFilter.groupBy.color,
     );
   } else {
-    groupByColor = getState().contextFilter.groupByColor;
+    groupBy.color = getState().contextFilter.groupBy.color;
   }
-  if (getState().contextFilter.groupByStyle.length > 0 && groupAgainst?.style) {
-    groupByStyle = _.difference(
+  if (
+    getState().contextFilter.groupBy.style.length > 0 &&
+    groupAgainst?.style
+  ) {
+    groupBy.style = _.difference(
       groupingAvailableFields,
-      getState().contextFilter.groupByStyle,
+      getState().contextFilter.groupBy.style,
     );
   } else {
-    groupByStyle = getState().contextFilter.groupByStyle;
+    groupBy.style = getState().contextFilter.groupBy.style;
   }
-  if (getState().contextFilter.groupByChart.length > 0 && groupAgainst?.chart) {
-    groupByChart = _.difference(
+  if (
+    getState().contextFilter.groupBy.chart.length > 0 &&
+    groupAgainst?.chart
+  ) {
+    groupBy.chart = _.difference(
       groupingAvailableFields,
-      getState().contextFilter.groupByChart,
+      getState().contextFilter.groupBy.chart,
     );
   } else {
-    groupByChart = getState().contextFilter.groupByChart;
+    groupBy.chart = getState().contextFilter.groupBy.chart;
   }
   const grouping = {
-    color: groupByColor,
-    stroke: groupByStyle,
-    chart: groupByChart,
+    color: groupBy.color,
+    style: groupBy.style,
+    chart: groupBy.chart,
   };
   const xAlignment = getState().chart.settings.persistent.xAlignment;
   const scale = {
     xScale: getState().chart.settings.persistent.xScale ?? 0,
     yScale: getState().chart.settings.persistent.yScale ?? 0,
   };
-  const smoothingAlgorithm = getState().chart.settings.persistent
-    .smoothingAlgorithm;
+  const smoothingAlgorithm =
+    getState().chart.settings.persistent.smoothingAlgorithm;
   const smoothFactor = getState().chart.settings.persistent.smoothFactor;
 
   const traceList = new TraceList(grouping);
@@ -499,11 +509,8 @@ function setHiddenMetrics(metricKey) {
     if (hiddenMetricsClone.includes(metricKey)) {
       hiddenMetricsClone.splice(hiddenMetricsClone.indexOf(metricKey), 1);
     } else {
-      const {
-        runHash,
-        metricName,
-        traceContext,
-      } = getState().chart.focused.circle;
+      const { runHash, metricName, traceContext } =
+        getState().chart.focused.circle;
       if (runHash !== null) {
         const activeMetricKey = `${runHash}/${metricName}/${traceContext}`;
         if (activeMetricKey === metricKey) {
@@ -592,7 +599,7 @@ function setContextFilter(
     stateUpdate.replaceUrl = true;
   }
 
-  if (resetZoom && contextFilterUpdate.hasOwnProperty('groupByChart')) {
+  if (resetZoom && contextFilterUpdate.groupBy?.hasOwnProperty('chart')) {
     stateUpdate.chart = {
       ...getState().chart,
       settings: {
@@ -607,7 +614,7 @@ function setContextFilter(
     };
   }
 
-  if (contextFilterUpdate.hasOwnProperty('groupByColor')) {
+  if (contextFilterUpdate.groupBy?.hasOwnProperty('color')) {
     stateUpdate.chart = {
       ...getState().chart,
       settings: {
@@ -622,9 +629,9 @@ function setContextFilter(
 
   if (
     getState().chart.settings.persistent.aggregated &&
-    stateUpdate.contextFilter.groupByColor.length === 0 &&
-    stateUpdate.contextFilter.groupByStyle.length === 0 &&
-    stateUpdate.contextFilter.groupByChart.length === 0
+    stateUpdate.contextFilter.groupBy.color.length === 0 &&
+    stateUpdate.contextFilter.groupBy.style.length === 0 &&
+    stateUpdate.contextFilter.groupBy.chart.length === 0
   ) {
     stateUpdate.chart = {
       ...getState().chart,
@@ -643,14 +650,14 @@ function setContextFilter(
       name: 'context',
       columns: _.difference(
         _.concat(
-          contextFilterUpdate.groupByColor ?? [],
-          contextFilterUpdate.groupByStyle ?? [],
-          contextFilterUpdate.groupByChart ?? [],
+          contextFilterUpdate.groupBy?.color ?? [],
+          contextFilterUpdate.groupBy?.style ?? [],
+          contextFilterUpdate.groupBy?.chart ?? [],
         ),
         _.concat(
-          getState().contextFilter.groupByColor,
-          getState().contextFilter.groupByStyle,
-          getState().contextFilter.groupByChart,
+          getState().contextFilter.groupBy.color,
+          getState().contextFilter.groupBy.style,
+          getState().contextFilter.groupBy.chart,
         ),
       ),
     });

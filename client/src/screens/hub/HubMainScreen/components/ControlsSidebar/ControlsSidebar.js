@@ -5,9 +5,6 @@ import ContentLoader from 'react-content-loader';
 
 import UI from '../../../../../ui';
 import ControlsSidebarToggleOutliers from './components/ControlsSidebarToggleOutliers/ControlsSidebarToggleOutliers';
-import GroupByColor from './components/GroupByColor/GroupByColor';
-import GroupByStyle from './components/GroupByStyle/GroupByStyle';
-import GroupByChart from './components/GroupByChart/GroupByChart';
 import Aggregate from './components/Aggregate/Aggregate';
 import ControlsSidebarZoom from './components/ControlsSidebarZoom/ControlsSidebarZoom';
 import ToggleParPlotIndicator from './components/ToggleParPlotIndicator/ToggleParPlotIndicator';
@@ -16,32 +13,25 @@ import ControlsSidebarExport from './components/ControlsSidebarExport/ControlsSi
 import ControlsSidebarHighlightMode from './components/ControlsSidebarHighlightMode/ControlsSidebarHighlightMode';
 import { HubMainScreenModel } from '../../models/HubMainScreenModel';
 import ControlsSidebarAxesProperties from './components/ControlsSidebarAxesProperties/ControlsSidebarAxesProperties';
+import ControlsSidebarGrouping from './components/ControlsSidebarGrouping/ControlsSidebarGrouping';
 
 function ControlsSidebar() {
-  let {
-    runs,
-    chart,
-    contextFilter,
-    colorPalette,
-  } = HubMainScreenModel.useHubMainScreenState([
-    HubMainScreenModel.events.SET_RUNS_STATE,
-    HubMainScreenModel.events.SET_CHART_SETTINGS_STATE,
-    HubMainScreenModel.events.SET_CHART_POINTS_COUNT,
-    HubMainScreenModel.events.SET_CONTEXT_FILTER,
-    HubMainScreenModel.events.SET_SEED,
-    HubMainScreenModel.events.TOGGLE_PERSISTENCE,
-    HubMainScreenModel.events.SET_COLOR_PALETTE,
-  ]);
+  let { runs, chart, contextFilter, colorPalette } =
+    HubMainScreenModel.useHubMainScreenState([
+      HubMainScreenModel.events.SET_RUNS_STATE,
+      HubMainScreenModel.events.SET_CHART_SETTINGS_STATE,
+      HubMainScreenModel.events.SET_CHART_POINTS_COUNT,
+      HubMainScreenModel.events.SET_CONTEXT_FILTER,
+      HubMainScreenModel.events.SET_SEED,
+      HubMainScreenModel.events.TOGGLE_PERSISTENCE,
+      HubMainScreenModel.events.SET_COLOR_PALETTE,
+    ]);
 
-  let {
-    isExploreMetricsModeEnabled,
-    isExploreParamsModeEnabled,
-  } = HubMainScreenModel.helpers;
+  let { isExploreMetricsModeEnabled, isExploreParamsModeEnabled } =
+    HubMainScreenModel.helpers;
 
   const {
-    groupByColor,
-    groupByStyle,
-    groupByChart,
+    groupBy,
     groupAgainst,
     aggregatedArea,
     aggregatedLine,
@@ -66,21 +56,27 @@ function ControlsSidebar() {
         </ContentLoader>
       ) : (
         <div className='ControlsSidebar__items'>
-          <GroupByColor
-            groupByColor={groupByColor}
+          <ControlsSidebarGrouping
+            key='color'
+            type='color'
+            groupByItem={groupBy.color}
             seed={seed.color}
             persist={persist.color}
             colorPalette={colorPalette}
             against={groupAgainst?.color ?? false}
           />
-          <GroupByStyle
-            groupByStyle={groupByStyle}
+          <ControlsSidebarGrouping
+            key='style'
+            type='style'
+            groupByItem={groupBy.style}
             seed={seed.style}
             persist={persist.style}
             against={groupAgainst?.style ?? false}
           />
-          <GroupByChart
-            groupByChart={groupByChart}
+          <ControlsSidebarGrouping
+            key='chart'
+            type='chart'
+            groupByItem={groupBy.chart}
             against={groupAgainst?.chart ?? false}
           />
           {isExploreMetricsModeEnabled() && (
@@ -90,9 +86,9 @@ function ControlsSidebar() {
                 aggregatedArea={aggregatedArea}
                 aggregatedLine={aggregatedLine}
                 disabled={
-                  groupByColor.length === 0 &&
-                  groupByStyle.length === 0 &&
-                  groupByChart.length === 0
+                  groupBy.color.length === 0 &&
+                  groupBy.style.length === 0 &&
+                  groupBy.chart.length === 0
                 }
               />
               <UI.Line />

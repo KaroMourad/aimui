@@ -87,8 +87,8 @@ function ContextTable(props) {
     setColumnsWidth(columnsWidthClone);
   }
 
-  const height = contextTableContainerRef.current?.getBoundingClientRect()
-    ?.height;
+  const height =
+    contextTableContainerRef.current?.getBoundingClientRect()?.height;
   const itemMaxHeight = !!height ? height - 50 : null;
 
   useEffect(() => {
